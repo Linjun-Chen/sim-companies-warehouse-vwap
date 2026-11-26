@@ -1,40 +1,54 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>仓库 VWAP 设置</title>
+    <title data-message="settingsTitle"></title>
     <link rel="stylesheet" href="settings.css">
     <script type="module" src="settings.js"></script>
   </head>
   <body>
     <main>
-      <h1>仓库 VWAP</h1>
+      <header class="page-heading">
+        <h1 data-message="title"></h1>
+        <label class="language">
+          <span data-message="language"></span>
+          <select id="language" aria-describedby="language-notice">
+            <option value="auto" data-message="browserLanguage"></option>
+            <option value="zh-CN" lang="zh-CN">简体中文</option>
+            <option value="en" lang="en">English</option>
+          </select>
+        </label>
+        <output id="language-notice" role="status"></output>
+      </header>
       <section aria-labelledby="defaults-title">
-        <h2 id="defaults-title">全局默认</h2>
+        <h2 id="defaults-title" data-message="defaultQuote"></h2>
         <form id="defaults">
           <div class="fields">
-            <label>下调 %
+            <label><span data-message="discount"></span>
               <input name="discount" type="number" min="0" max="100" step="0.01" inputmode="decimal" required>
             </label>
-            <label>VWAP 天数
-              <input name="days" type="number" min="1" step="1" inputmode="numeric" required>
+            <label><span data-message="periodDays"></span>
+              <input name="days" type="number" min="1" step="1" inputmode="numeric" required
+                aria-describedby="period-preview period-rule">
             </label>
           </div>
+          <p id="period-preview" class="hint"></p>
+          <p id="period-rule" class="hint" data-message="weighting"></p>
           <div class="actions">
-            <button>保存</button>
+            <button data-message="save"></button>
             <output role="status"></output>
           </div>
         </form>
       </section>
 
       <section aria-labelledby="product-title">
-        <h2 id="product-title">商品与星级</h2>
+        <h2 id="product-title" data-message="productsAndGrades"></h2>
         <form id="product-picker">
           <div class="picker">
             <input id="product-query" type="search" list="products" autocomplete="off" required
-              placeholder="名称或编号" aria-label="商品名称或编号">
-            <button>查找</button>
+              data-placeholder="productQuery" data-label="productQuery">
+            <button data-message="findProduct"></button>
           </div>
           <datalist id="products"></datalist>
           <output id="picker-notice" role="status"></output>
@@ -43,75 +57,75 @@
         <form id="product-rules" hidden>
           <h3 id="product-name"></h3>
           <div class="fields" id="product-defaults">
-            <label>下调 %
+            <label><span data-message="discount"></span>
               <input name="discount" type="number" min="0" max="100" step="0.01" inputmode="decimal">
             </label>
-            <label>VWAP 天数
-              <input name="days" type="number" min="1" step="1" inputmode="numeric">
+            <label><span data-message="periodDays"></span>
+              <input name="days" type="number" min="1" step="1" inputmode="numeric" aria-describedby="inherit-rule">
             </label>
           </div>
-          <p class="hint">留空继承上一级</p>
+          <p id="inherit-rule" class="hint" data-message="inherit"></p>
           <details id="quality-settings">
-            <summary>按星级设置</summary>
+            <summary data-message="byQuality"></summary>
             <table>
               <thead>
                 <tr>
-                  <th scope="col">星级</th>
-                  <th scope="col">下调 %</th>
-                  <th scope="col">VWAP 天数</th>
+                  <th scope="col" data-message="quality"></th>
+                  <th scope="col" data-message="discount"></th>
+                  <th scope="col" data-message="periodDays"></th>
                 </tr>
               </thead>
               <tbody id="quality-rows"></tbody>
             </table>
           </details>
           <div class="actions">
-            <button>保存商品</button>
-            <button type="reset" class="text-button" hidden>撤销</button>
+            <button data-message="saveProduct"></button>
+            <button type="reset" class="text-button" data-message="undo" hidden></button>
             <output role="status"></output>
           </div>
         </form>
       </section>
 
       <details class="advanced">
-        <summary>显示与取数</summary>
+        <summary data-message="displayAndData"></summary>
         <form id="appearance">
           <div class="checks">
-            <label><input name="autoFetch" type="checkbox"> 自动读取日线</label>
-            <label><input name="date" type="checkbox"> 统计日期</label>
-            <label><input name="chartLink" type="checkbox"> 日线入口</label>
+            <label><input name="autoFetch" type="checkbox"> <span data-message="autoFetch"></span></label>
+            <label><input name="date" type="checkbox"> <span data-message="showDate"></span></label>
+            <label><input name="chartLink" type="checkbox"> <span data-message="showChart"></span></label>
           </div>
           <div class="fields">
-            <label>报价显示
+            <label><span data-message="showPrices"></span>
               <select name="prices">
-                <option value="both">VWAP 与折后价</option>
-                <option value="vwap">只显示 VWAP</option>
-                <option value="discounted">只显示折后价</option>
+                <option value="both" data-message="bothPrices"></option>
+                <option value="vwap" data-message="onlyVwap"></option>
+                <option value="discounted" data-message="onlyDiscounted"></option>
               </select>
             </label>
-            <label>价格小数位
+            <label><span data-message="precision"></span>
               <select name="precision">
-                <option value="auto">自动</option>
-                <option value="2">2 位</option>
-                <option value="3">3 位</option>
-                <option value="4">4 位</option>
+                <option value="auto" data-message="automatic"></option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
               </select>
             </label>
-            <label>库存布局
+            <label><span data-message="layout"></span>
               <select name="layout">
-                <option value="inline">同行</option>
-                <option value="stacked">换行</option>
+                <option value="inline" data-message="inline"></option>
+                <option value="stacked" data-message="stacked"></option>
               </select>
             </label>
-            <label>主题
+            <label><span data-message="theme"></span>
               <select name="theme">
-                <option value="system">跟随系统</option>
-                <option value="light">浅色</option>
-                <option value="dark">深色</option>
+                <option value="system" data-message="systemTheme"></option>
+                <option value="light" data-message="light"></option>
+                <option value="dark" data-message="dark"></option>
               </select>
             </label>
           </div>
           <div class="actions">
-            <button>保存</button>
+            <button data-message="save"></button>
             <output role="status"></output>
           </div>
         </form>

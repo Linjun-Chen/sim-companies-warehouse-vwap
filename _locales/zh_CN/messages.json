@@ -1,0 +1,5 @@
+{
+  "extensionName": { "message": "Sim Companies 仓库 VWAP" },
+  "extensionDescription": { "message": "按仓库商品和星级显示官方日线 VWAP，支持自定义统计天数和折后单价。" },
+  "actionTitle": { "message": "仓库 VWAP 设置" }
+}

@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"تعديل الخصومات"},
+  "productDefault": {"message":"الخصم الافتراضي للمنتج"},
+  "inheritDiscount": {"message":"اترك الحقل فارغًا لتطبيق خصم المنتج أو الخصم العام."},
+  "cancel": {"message":"إلغاء"},
   "title": {"message":"VWAP المستودع"},
   "settingsTitle": {"message":"إعدادات VWAP المستودع"},
   "language": {"message":"اللغة"},

@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"İndirimleri düzenle"},
+  "productDefault": {"message":"Ürün varsayılanı"},
+  "inheritDiscount": {"message":"Ürünün veya genel ayarların indirimini kullanmak için boş bırakın."},
+  "cancel": {"message":"İptal"},
   "title": {"message":"Depo VWAP"},
   "settingsTitle": {"message":"Depo VWAP ayarları"},
   "language": {"message":"Dil"},

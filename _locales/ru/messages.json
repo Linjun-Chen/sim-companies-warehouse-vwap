@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Изменить скидки"},
+  "productDefault": {"message":"Скидка товара"},
+  "inheritDiscount": {"message":"Оставьте поле пустым, чтобы применить скидку товара или общую скидку."},
+  "cancel": {"message":"Отмена"},
   "title": {"message":"VWAP на складе"},
   "settingsTitle": {"message":"Настройки VWAP на складе"},
   "language": {"message":"Язык"},

@@ -40,6 +40,116 @@
   outline-offset: 2px;
 }
 
+.scwv-quote .scwv-discount-trigger {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0.15em;
+  text-decoration: underline;
+  text-underline-offset: 0.19em;
+}
+
+.scwv-discount-trigger:focus-visible,
+.scwv-discount-editor :focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.scwv-discount-editor {
+  color-scheme: light dark;
+  --scwv-line: color-mix(in srgb, CanvasText 24%, Canvas);
+  --scwv-control: color-mix(in srgb, CanvasText 48%, Canvas);
+  --scwv-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+  box-sizing: border-box;
+  inline-size: min(31rem, calc(100% - 1.5rem));
+  max-block-size: calc(100% - 1.5rem);
+  padding: 1rem;
+  border: 1px solid var(--scwv-line);
+  border-radius: 0;
+  background: Canvas;
+  color: CanvasText;
+  font: 14px/1.45 system-ui, "Microsoft YaHei", sans-serif;
+  overflow: auto;
+}
+
+.scwv-discount-editor[data-theme="light"] { color-scheme: light; }
+.scwv-discount-editor[data-theme="dark"] { color-scheme: dark; }
+.scwv-discount-editor::backdrop { background: rgb(0 0 0 / 35%); }
+
+.scwv-discount-editor h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+.scwv-discount-editor label {
+  display: block;
+  min-inline-size: 0;
+  color: var(--scwv-muted);
+}
+
+.scwv-discount-editor .scwv-discount-default {
+  display: grid;
+  grid-template-columns: 1fr 6rem;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.scwv-discount-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.3rem), 1fr));
+  gap: 0.45rem 0.8rem;
+  border-block-start: 1px solid var(--scwv-line);
+  margin-block-start: 0.75rem;
+  padding-block-start: 0.65rem;
+}
+
+.scwv-discount-editor input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0.25rem 0.125rem;
+  border: 0;
+  border-block-end: 1px solid var(--scwv-control);
+  border-radius: 0;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.scwv-discount-editor input::placeholder { color: var(--scwv-muted); opacity: 1; }
+.scwv-discount-editor p { color: var(--scwv-muted); margin: 0.65rem 0; }
+
+.scwv-discount-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.45rem;
+  border-block-start: 1px solid var(--scwv-line);
+  padding-block-start: 0.65rem;
+}
+
+.scwv-discount-actions output { margin-inline-end: auto; }
+.scwv-discount-actions button {
+  padding: 0.25rem 0.65rem;
+  min-block-size: 2rem;
+  border: 1px solid var(--scwv-control);
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.scwv-discount-actions button:hover { background: color-mix(in srgb, CanvasText 8%, Canvas); }
+
 .scwv-quote[data-layout="stacked"] {
   display: flex;
   width: fit-content;

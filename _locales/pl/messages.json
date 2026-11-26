@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Edytuj rabaty"},
+  "productDefault": {"message":"Rabat produktu"},
+  "inheritDiscount": {"message":"Pozostaw puste pole, aby użyć rabatu produktu lub rabatu globalnego."},
+  "cancel": {"message":"Anuluj"},
   "title": {"message":"VWAP magazynu"},
   "settingsTitle": {"message":"Ustawienia VWAP magazynu"},
   "language": {"message":"Język"},

@@ -1,25 +1,25 @@
-name: 问题反馈
-description: 反馈安装、报价或设置问题
+name: Bug report / 问题反馈
+description: Installation, quote, or settings problems / 安装、报价或设置问题
 labels: [bug]
 body:
   - type: input
     id: versions
     attributes:
-      label: 扩展和 Chrome 版本
-      placeholder: 1.1.2 / Chrome 158
+      label: Extension version, Chrome version, and language / 扩展版本、Chrome 版本和语言
+      placeholder: 1.3.1 / Chrome 158 / English
     validations:
       required: true
   - type: textarea
     id: reproduction
     attributes:
-      label: 复现步骤
-      description: 如果涉及报价，请填上服务器、商品、星级、VWAP 天数和统计日期（UTC）。
+      label: Steps to reproduce / 复现步骤
+      description: For quotes, include the realm, product, quality, VWAP period, and UTC date. 报价问题请附上服务器、商品、星级、VWAP 天数和统计日期（UTC）。
     validations:
       required: true
   - type: textarea
     id: result
     attributes:
-      label: 实际和预期结果
-      placeholder: 可以附上库存行显示的价格或状态文字。
+      label: Actual and expected results / 实际和预期结果
+      placeholder: Share the price or status shown on the stock row. 可以附上库存行的价格或状态文字。
     validations:
       required: true

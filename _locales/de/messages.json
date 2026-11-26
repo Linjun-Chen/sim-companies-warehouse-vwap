@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Abschläge bearbeiten"},
+  "productDefault": {"message":"Produktstandard"},
+  "inheritDiscount": {"message":"Bei leeren Feldern gilt der Abschlag des Produkts oder die globale Vorgabe."},
+  "cancel": {"message":"Abbrechen"},
   "title": {"message":"Lager-VWAP"},
   "settingsTitle": {"message":"Lager-VWAP-Einstellungen"},
   "language": {"message":"Sprache"},

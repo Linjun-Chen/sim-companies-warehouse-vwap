@@ -3,6 +3,9 @@
   const resourcePattern = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?encyclopedia\/(\d+)\/resource\/(\d+)\/?$/i;
   const chartRoute = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?market\/resource\/(\d+)\/chart\/?$/i;
   const { settingsKeys, readPreferences, priceRule } = globalThis.scwvPreferences;
+  const { tradingDay, dateRange } = globalThis.scwvDates;
+  const { uiLanguage, translator } = globalThis.scwvI18n;
+  const browserLanguage = chrome.i18n.getUILanguage();
   const quoteClass = 'scwv-quote';
   const formatPrice = Object.fromEntries([2, 3, 4].map(digits => [digits, new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -10,25 +13,24 @@
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   })]));
-  const formatTime = new Intl.DateTimeFormat('zh-CN', {
+  const formatTime = Object.fromEntries(['zh-CN', 'en'].map(language => [language, new Intl.DateTimeFormat(language, {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
-  });
+    hourCycle: 'h23',
+  })]));
   const statuses = {
-    'cache-only': '该星级暂无日线缓存',
-    'sign-in': '请登录游戏后重试',
-    forbidden: '图表请求被拒（403）',
-    'rate-limited': '游戏接口限流（429）',
-    unsupported: '当前服务器没有原生日线',
+    'cache-only': 'cacheMissing',
+    'sign-in': 'signIn',
+    forbidden: 'forbidden',
+    'rate-limited': 'rateLimited',
+    unsupported: 'unsupported',
   };
   const issues = {
-    network: '网络连接失败',
-    timeout: '读取超时',
-    tab: '游戏页连接已断开',
-    json: '接口返回了非 JSON 数据',
-    schema: '接口数据格式无法识别',
-    worker: '仓库报价未连接，请刷新游戏页',
+    network: 'network',
+    timeout: 'timeout',
+    tab: 'tabClosed',
+    json: 'badJson',
+    schema: 'badSchema',
   };
   const storedPreferences = {};
   let preferences = readPreferences();
@@ -132,51 +134,35 @@
     return formatPrice[precision === 'auto' ? (amount < 10 ? 3 : 2) : precision].format(amount);
   }
 
-  function yesterday() {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - 1);
-    return date.toISOString().slice(0, 10);
-  }
-
-  function dateRange(lastDate, days) {
-    if (days === 1) return `${lastDate} UTC`;
-    const first = new Date(lastDate);
-    first.setUTCDate(first.getUTCDate() - days + 1);
-    return `${first.toISOString().slice(0, 10)} 至 ${lastDate} UTC`;
-  }
-
-  function quoteStatus(quote, stage) {
-    if (!quote) return '正在检查 VWAP';
-    if (quote.status === 'no-trades') return quote.days === 1 ? '昨日无成交' : `${quote.days} 日内无成交`;
+  function quoteStatus(quote, stage, text) {
+    if (!quote) return text('checking');
+    if (quote.status === 'no-trades') return text(quote.days === 1 ? 'noTradesYesterday' : 'noTradesPeriod');
     if (quote.status === 'queued') {
-      if (quote.detail?.issue === 'renew-token') return '图表令牌已过期，等待更新';
-      if (quote.retryAt <= Date.now()) return stage === 'token' ? '正在申请图表访问' : '正在检查日线';
-      return stage === 'token' ? '等待获取图表令牌' : '排队读取日线';
+      if (quote.detail?.issue === 'renew-token') return text('renewingToken');
+      if (quote.retryAt <= Date.now()) return text(stage === 'token' ? 'gettingToken' : 'checkingChart');
+      return text(stage === 'token' ? 'waitingForToken' : 'queued');
     }
     const { httpStatus, issue } = quote.detail ?? {};
-    return statuses[quote.status] ?? issues[issue] ??
-      (httpStatus ? `接口暂不可用（${httpStatus}）` : '接口暂不可用');
+    return text(statuses[quote.status] ?? issues[issue] ?? (httpStatus ? 'unavailableHttp' : 'unavailable'), httpStatus);
   }
 
-  function nextRead(retryAt) {
-    return retryAt > Date.now() ? `下次检查 ${formatTime.format(retryAt)}` : '';
-  }
-
-  function chartLink({ realm, resource }, quality) {
+  function chartLink({ realm, resource }, quality, text) {
     const link = document.createElement('a');
     link.href = `/market/resource/${resource}/chart/?realm=${realm}&quality=${quality}`;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    link.textContent = '日线';
-    link.title = `打开 Q${quality} 原生图表，选择 Day（日线）即可复用数据`;
+    link.textContent = text('chart');
+    link.title = text('chartHint', quality);
     link.addEventListener('click', event => event.stopPropagation());
     return link;
   }
 
   function render(context) {
-    const date = yesterday();
+    const { date } = tradingDay();
     const snapshot = context.snapshot;
     const { display } = preferences;
+    const language = uiLanguage(preferences.language, browserLanguage);
+    const text = translator(language);
 
     for (const { quality, line } of context.rows) {
       const { days, discount } = priceRule(preferences, context.resource, quality);
@@ -188,8 +174,8 @@
       const stalePrice = quote?.status !== 'price' && quote?.status !== 'no-trades' && previous?.date < date;
       const price = stalePrice ? previous : quote;
       const range = dateRange(stalePrice ? previous.date : date, days);
-      const status = context.readError ? issues.worker : quoteStatus(quote, snapshot?.stage);
-      const caption = nextRead(quote?.retryAt);
+      const status = context.readError ? text('worker') : quoteStatus(quote, snapshot?.stage, text);
+      const caption = quote?.retryAt > Date.now() ? text('nextRead', formatTime[language].format(quote.retryAt)) : '';
       const showChart = Boolean(quote && display.chartLink &&
         !['unsupported', 'no-trades', 'sign-in'].includes(quote.status));
       let pill = line.querySelector(`:scope > .${quoteClass}`);
@@ -198,43 +184,45 @@
         pill.className = quoteClass;
         line.append(pill);
       }
+      pill.lang = language;
       pill.dataset.layout = display.layout;
       pill.dataset.state = stalePrice ? 'stale' : quote?.status ?? 'checking';
       if (price?.status === 'price') {
         const children = [];
-        const label = days === 1 ? (stalePrice ? '上次 VWAP' : '昨日 VWAP') : `${stalePrice ? '上次 ' : ''}${days} 日 VWAP`;
+        const label = days === 1 ? text(stalePrice ? 'previousVwap' : 'yesterdayVwap')
+          : text(stalePrice ? 'previousPeriodVwap' : 'periodVwap', days);
         if (display.vwap) children.push(textPart(label, priceText(price.vwap)));
-        if (display.discounted) children.push(textPart('折后', priceText(price.vwap * (1 - discount / 100))));
+        if (display.discounted) children.push(textPart(text('discounted'), priceText(price.vwap * (1 - discount / 100))));
         if (display.date || stalePrice) {
           const day = document.createElement('small');
           day.textContent = range;
           if (stalePrice) {
-            const update = !preferences.autoFetch ? '自动读取已关闭'
-              : context.readError ? '暂未更新'
-              : !quote || quote.status === 'queued' ? '更新中' : status;
+            const update = !preferences.autoFetch ? text('autoFetchOff')
+              : context.readError ? text('awaitingUpdate')
+              : !quote || quote.status === 'queued' ? text('updating') : status;
             day.textContent += ` · ${update}`;
           }
           children.push(day);
         }
-        if (stalePrice && showChart) children.push(chartLink(context, quality));
-        const source = price.source === 'native' ? '已复用游戏原生日线' : '官方日线';
-        const coverage = days > 1 ? ` · ${price.daysWithTrades} 天有成交` : '';
+        if (stalePrice && showChart) children.push(chartLink(context, quality, text));
+        const source = text(price.source === 'native' ? 'nativeSource' : 'officialSource');
+        const coverage = days > 1 ? ` · ${text('tradingDays', price.daysWithTrades, days)}` : '';
         const progress = stalePrice && preferences.autoFetch ? ` · ${status}${caption ? ` · ${caption}` : ''}` : '';
-        pill.title = `Q${quality} · ${range} · ${source}${coverage} · 下调 ${discount}%${progress}`;
+        pill.title = `Q${quality} · ${range} · ${source}${coverage} · ${text('discountApplied', discount)}${progress}`;
         show(pill, children, JSON.stringify(children.map(child => [child.textContent, child.getAttribute('href')])));
       } else {
         const statusText = document.createElement('span');
         statusText.className = 'scwv-status';
         statusText.textContent = status;
         const children = [statusText];
-        const detail = quote?.detail?.stage === 'token' ? ' · 图表令牌' : '';
-        const help = quote?.status === 'forbidden' ? ' · 请确认游戏账号可打开分品质日线' : '';
+        const detail = quote?.detail?.stage === 'token' ? ` · ${text('chartToken')}` : '';
+        const help = quote?.status === 'forbidden' ? ` · ${text('chartAccess')}` : '';
         if (caption) {
           const captionText = document.createElement('small');
           captionText.textContent = caption;
           children.push(captionText);
         }
-        if (showChart) children.push(chartLink(context, quality));
+        if (showChart) children.push(chartLink(context, quality, text));
         pill.title = `Q${quality} · ${range}${detail}${help}`;
         show(pill, children, `status/${status}/${caption}/${showChart ? `${context.realm}/${context.resource}/${quality}` : ''}`);
       }

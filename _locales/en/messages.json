@@ -1,0 +1,5 @@
+{
+  "extensionName": { "message": "Sim Companies Warehouse VWAP" },
+  "extensionDescription": { "message": "See official daily VWAP and discounted prices by quality in the Sim Companies warehouse." },
+  "actionTitle": { "message": "Warehouse VWAP settings" }
+}

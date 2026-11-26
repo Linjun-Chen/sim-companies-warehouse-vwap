@@ -87,6 +87,20 @@ test('distinguishes missing daily candles, zero volume and incompatible data', (
   assert.deepEqual(decodeDailyQuote(candles(daily(yesterday, 8), daily(yesterday, 9)), yesterday), { status: 'unavailable' });
 });
 
+test('a two-day period includes both completed days and excludes the current day', () => {
+  const { date, timestamp } = tradingDay(Date.parse('2027-01-02T00:00:00Z'));
+  const series = decodeDailySeries(candles(
+    daily(timestamp - 2 * DAY_SECONDS, 100, 500),
+    daily(timestamp - DAY_SECONDS, 6, 75),
+    daily(timestamp, 10, 25),
+    daily(timestamp + DAY_SECONDS, 200, 500),
+  ), timestamp);
+  assert.deepEqual(periodQuote(series, timestamp, 1), { status: 'price', vwap: 10, daysWithTrades: 1 });
+  assert.deepEqual(periodQuote(series, timestamp, 2), { status: 'price', vwap: 7, daysWithTrades: 2 });
+  assert.equal(globalThis.scwvDates.dateRange(date, 1), '2027-01-01 UTC');
+  assert.equal(globalThis.scwvDates.dateRange(date, 2), '2026-12-31 – 2027-01-01 UTC');
+});
+
 test('reuses native series immediately and weights the chosen days by volume', async () => {
   const sim = scenario(() => assert.fail('Cache reads must add zero requests'));
   sim.local.values.nextRequestAt = GAME_DAY + REQUEST_INTERVAL_MS;

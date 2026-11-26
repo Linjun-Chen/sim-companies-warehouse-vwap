@@ -1,28 +1,30 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>仓库 VWAP</title>
+    <title data-message="title"></title>
     <link rel="stylesheet" href="settings.css">
     <script type="module" src="popup.js"></script>
   </head>
   <body class="popup">
     <main>
-      <h1>仓库 VWAP</h1>
+      <h1 data-message="title"></h1>
       <form id="defaults">
         <div class="fields">
-          <label>下调 %
+          <label><span data-message="discount"></span>
             <input name="discount" type="number" min="0" max="100" step="0.01" inputmode="decimal" required>
           </label>
-          <label>VWAP 天数
-            <input name="days" type="number" min="1" step="1" inputmode="numeric" required>
+          <label><span data-message="periodDays"></span>
+            <input name="days" type="number" min="1" step="1" inputmode="numeric" required
+              aria-describedby="period-preview">
           </label>
         </div>
+        <p id="period-preview" class="hint"></p>
         <div class="actions">
-          <button>保存</button>
+          <button data-message="save"></button>
           <output role="status"></output>
-          <a id="more" href="settings.html" target="_blank" rel="noopener">完整设置</a>
+          <a id="more" href="settings.html" target="_blank" rel="noopener" data-message="moreSettings"></a>
         </div>
       </form>
     </main>

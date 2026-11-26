@@ -1,4 +1,4 @@
-import { MAX_DAYS, settingsKeys, readPreferences, patchSettings, onSave } from './defaults.js';
+import { MAX_DAYS, settingsKeys, readPreferences, patchSettings, onSave, setNotice, language, text } from './defaults.js';
 import { productNames } from './product-names.js';
 
 const find = selector => document.querySelector(selector);
@@ -7,6 +7,7 @@ const query = find('#product-query');
 const datalist = find('#products');
 const pickerNotice = find('#picker-notice');
 const ruleForm = find('#product-rules');
+const ruleNotice = ruleForm.querySelector('output');
 const gradeTable = find('#quality-settings');
 const undo = ruleForm.querySelector('[type="reset"]');
 const base = [find('#product-defaults [name="discount"]'), find('#product-defaults [name="days"]')];
@@ -19,8 +20,6 @@ for (let quality = 0; quality <= 12; quality += 1) {
   const row = template.content.firstElementChild.cloneNode(true);
   const inputs = [...row.querySelectorAll('input')];
   row.querySelector('th').textContent = 'Q' + quality;
-  inputs[0].setAttribute('aria-label', 'Q' + quality + ' 下调 %');
-  inputs[1].setAttribute('aria-label', 'Q' + quality + ' VWAP 天数');
   inputs[1].max = MAX_DAYS;
   rows.append(row);
   grades.push(inputs);
@@ -33,7 +32,12 @@ let preferences = readPreferences(stored);
 let productId;
 
 function productName(id) {
-  return productNames[id] ?? stored.knownProducts?.[id] ?? '商品 #' + id;
+  const names = productNames[id]?.split(' / ');
+  return names?.[language === 'en' ? 1 : 0] ?? stored.knownProducts?.[id] ?? text('product');
+}
+
+function productLabel(id) {
+  return `${productName(id)} · #${id}`;
 }
 
 function updateProducts() {
@@ -42,15 +46,23 @@ function updateProducts() {
     ...Object.keys(stored.knownProducts ?? {}),
     ...Object.keys(preferences.productRules),
   ]);
-  const options = [...ids].sort((a, b) => productName(a).localeCompare(productName(b), 'zh-CN'));
+  const options = [...ids].sort((a, b) => productName(a).localeCompare(productName(b), language));
   datalist.replaceChildren(...options.map(id => {
     const option = document.createElement('option');
-    const name = productName(id);
-    option.value = name === '商品 #' + id ? name : name + ' · #' + id;
+    option.value = productLabel(id);
     option.dataset.id = id;
-    if (Object.hasOwn(preferences.productRules, id)) option.label = '已设规则';
+    if (Object.hasOwn(preferences.productRules, id)) option.label = text('hasRules');
     return option;
   }));
+}
+
+function localizeProducts() {
+  grades.forEach(([discount, days], quality) => {
+    discount.setAttribute('aria-label', `Q${quality} ${text('discount')}`);
+    days.setAttribute('aria-label', `Q${quality} ${text('periodDays')}`);
+  });
+  if (productId) find('#product-name').textContent = productLabel(productId);
+  updateProducts();
 }
 
 function inheritValues() {
@@ -81,45 +93,49 @@ function hasDraft() {
 function openProduct(id) {
   if (!Number.isSafeInteger(id) || id < 1) return;
   if (id !== productId && hasDraft()) {
-    pickerNotice.textContent = '请先保存或撤销当前商品的修改';
+    setNotice(pickerNotice, 'saveDraftFirst');
     return;
   }
-  pickerNotice.textContent = '';
+  setNotice(pickerNotice);
   query.value = '';
   if (id === productId) return;
   productId = id;
-  find('#product-name').textContent = productName(id);
+  find('#product-name').textContent = productLabel(id);
   ruleForm.hidden = false;
   gradeTable.open = false;
-  ruleForm.querySelector('output').textContent = '';
+  setNotice(ruleNotice);
   showRules();
 }
 
+const searchTerm = value => value.trim().normalize('NFKC').toLowerCase();
 picker.addEventListener('submit', event => {
   event.preventDefault();
-  const term = query.value.trim().normalize('NFKC').toLowerCase();
+  const term = searchTerm(query.value);
   const number = /^#?\s*(\d+)$/.exec(term)?.[1];
   if (Number.isSafeInteger(Number(number)) && Number(number) > 0) {
     openProduct(Number(number));
     return;
   }
-  const options = [...datalist.options];
-  const exact = options.filter(option => option.value.toLowerCase() === term ||
-    productName(option.dataset.id).toLowerCase().split(' / ').includes(term));
-  const matches = exact.length ? exact : options.filter(option => term && option.value.toLowerCase().includes(term));
-  if (matches.length === 1) openProduct(Number(matches[0].dataset.id));
-  else pickerNotice.textContent = matches.length ? '请从搜索结果中选择商品' : '未找到商品';
+  const options = [...datalist.options].map(option => {
+    const id = option.dataset.id;
+    const names = productNames[id]?.split(' / ') ?? [productName(id)];
+    return { id, terms: [option.value, ...names].map(searchTerm) };
+  });
+  const exact = options.filter(option => option.terms.includes(term));
+  const matches = exact.length ? exact : options.filter(option => term && option.terms.some(name => name.includes(term)));
+  if (matches.length === 1) openProduct(Number(matches[0].id));
+  else setNotice(pickerNotice, matches.length ? 'chooseProduct' : 'productMissing');
 });
 
-query.addEventListener('input', () => { pickerNotice.textContent = ''; });
+query.addEventListener('input', () => setNotice(pickerNotice));
 ruleForm.addEventListener('input', () => {
   undo.hidden = !hasDraft();
   inheritValues();
 });
 ruleForm.addEventListener('reset', event => {
   event.preventDefault();
-  pickerNotice.textContent = '';
-  ruleForm.querySelector('output').textContent = '';
+  setNotice(pickerNotice);
+  setNotice(ruleNotice);
   showRules();
 });
 gradeTable.addEventListener('invalid', () => { gradeTable.open = true; }, true);
@@ -147,7 +163,7 @@ onSave(ruleForm, async () => {
   });
   preferences = readPreferences(stored);
   showRules();
-  pickerNotice.textContent = '';
+  setNotice(pickerNotice);
   updateProducts();
 });
 
@@ -188,5 +204,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-updateProducts();
+document.addEventListener('warehouse-vwap:language', localizeProducts);
+localizeProducts();
 openProduct(Number(new URLSearchParams(location.search).get('resource')));

@@ -1,23 +1,14 @@
 import './preferences.js';
+import './dates.js';
 
 export const GAME_ORIGIN = 'https://www.simcompanies.com';
 export const REQUEST_INTERVAL_MS = 5 * 60_000;
-export const DAY_MS = 86_400_000;
-const DAY_SECONDS = DAY_MS / 1000;
+export const { DAY_MS, tradingDay } = globalThis.scwvDates;
+const { DAY_SECONDS, periodStart } = globalThis.scwvDates;
 const ERROR_RETRY_MS = 30 * 60_000;
 const DISPATCH_WINDOW_MS = 5_000;
 const CACHE_FORMAT = 4;
 const { MAX_DAYS, validDays } = globalThis.scwvPreferences;
-
-export function tradingDay(now) {
-  const todayStart = Math.floor(now / DAY_MS) * DAY_MS;
-  const timestamp = (todayStart - DAY_MS) / 1000;
-  return {
-    date: new Date(timestamp * 1000).toISOString().slice(0, 10),
-    timestamp,
-    nextDay: todayStart + DAY_MS,
-  };
-}
 
 function numberValue(value) {
   return typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value) ? Number(value) : value;
@@ -26,7 +17,7 @@ function numberValue(value) {
 export function decodeDailySeries(data, timestamp) {
   if (data?.interval !== '1d' || !Array.isArray(data.candles)) return null;
 
-  const earliest = timestamp - (MAX_DAYS - 1) * DAY_SECONDS;
+  const earliest = periodStart(timestamp, MAX_DAYS);
   const dates = new Set();
   const series = [];
   for (const candle of data.candles) {
@@ -48,7 +39,7 @@ export function decodeDailySeries(data, timestamp) {
 }
 
 export function periodQuote(series, timestamp, days) {
-  const start = timestamp - (days - 1) * DAY_SECONDS;
+  const start = periodStart(timestamp, days);
   let totalVolume = 0;
   let tradedValue = 0;
   let count = 0;

@@ -16,6 +16,7 @@
       days: validDays(settings.days) ? settings.days : 1,
       autoFetch: settings.autoFetch !== false,
       theme: ['light', 'dark'].includes(settings.theme) ? settings.theme : 'system',
+      language: ['zh-CN', 'en'].includes(settings.language) ? settings.language : 'auto',
       display: {
         vwap: showVwap || !showDiscounted,
         discounted: showDiscounted,

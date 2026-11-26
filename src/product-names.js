@@ -1,7 +1,7 @@
 // Resource identifiers and display names from the official Magnates encyclopedia.
 // https://www.simcompanies.com/encyclopedia/0/resources/
 // https://www.simcompanies.com/zh-cn/encyclopedia/0/resources/
-export const productNames = {
+globalThis.scwvProductNames = {
   1: "电力 / Power",
   2: "水 / Water",
   3: "苹果 / Apples",

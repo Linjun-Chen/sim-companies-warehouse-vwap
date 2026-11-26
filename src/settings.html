@@ -15,8 +15,6 @@
           <span data-message="language"></span>
           <select id="language" aria-describedby="language-notice">
             <option value="auto" data-message="browserLanguage"></option>
-            <option value="zh-CN" lang="zh-CN">简体中文</option>
-            <option value="en" lang="en">English</option>
           </select>
         </label>
         <output id="language-notice" role="status"></output>
@@ -30,11 +28,14 @@
             </label>
             <label><span data-message="periodDays"></span>
               <input name="days" type="number" min="1" step="1" inputmode="numeric" required
-                aria-describedby="period-preview period-rule">
+                aria-describedby="period-preview">
             </label>
           </div>
           <p id="period-preview" class="hint"></p>
-          <p id="period-rule" class="hint" data-message="weighting"></p>
+          <details class="calculation">
+            <summary data-message="howCalculated"></summary>
+            <p class="hint" data-message="calculation"></p>
+          </details>
           <div class="actions">
             <button data-message="save"></button>
             <output role="status"></output>
@@ -93,8 +94,17 @@
             <label><input name="autoFetch" type="checkbox"> <span data-message="autoFetch"></span></label>
             <label><input name="date" type="checkbox"> <span data-message="showDate"></span></label>
             <label><input name="chartLink" type="checkbox"> <span data-message="showChart"></span></label>
+            <label><input name="overview" type="checkbox"> <span data-message="showOverview"></span></label>
+            <label><input name="coverage" type="checkbox"> <span data-message="showCoverage"></span></label>
+            <label><input name="localizedNumbers" type="checkbox"> <span data-message="localizedNumbers"></span></label>
           </div>
           <div class="fields">
+            <label><span data-message="autoScope"></span>
+              <select name="scope">
+                <option value="stock" data-message="scopeStock"></option>
+                <option value="detail" data-message="scopeDetail"></option>
+              </select>
+            </label>
             <label><span data-message="showPrices"></span>
               <select name="prices">
                 <option value="both" data-message="bothPrices"></option>

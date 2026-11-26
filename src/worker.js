@@ -1,12 +1,15 @@
 import { createQuoteService, GAME_ORIGIN, tradingDay } from './market.js';
+import './i18n.js';
 
+const { loadCatalog, languages } = globalThis.scwvI18n;
 const { getQuotes, rememberNative } = createQuoteService({
   local: chrome.storage.local,
   session: chrome.storage.session,
 });
-const warehouseRoute = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?headquarters\/warehouse\/[^/]+\/?$/i;
+const warehouseRoute = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?headquarters\/warehouse(?:\/[^/]+)?\/?$/i;
 const chartRoute = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?market\/resource\/(\d+)\/chart\/?$/i;
 const validQuality = quality => Number.isInteger(quality) && quality >= 0 && quality <= 12;
+const validResource = resource => Number.isSafeInteger(resource) && resource > 0;
 const midnightAlarm = 'warehouse-vwap:utc-midnight';
 let catalogUpdate = Promise.resolve();
 
@@ -70,11 +73,14 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (url.origin !== GAME_ORIGIN) return;
 
   // The isolated script reads the live pathname after in-page navigation.
-  const { pathname = url.pathname, realm, resource, qualities, daysByQuality, autoFetch, peek, name, quality, data, startedAt } =
-    message ?? {};
+  const { pathname = url.pathname, realm, resource, products, autoFetch, peek, quality, data, startedAt } = message ?? {};
   if (typeof pathname !== 'string') return;
-  if (!Number.isSafeInteger(resource) || resource <= 0) return;
-  if (message.type === 'warehouse-vwap:native-chart') {
+  if (message?.type === 'warehouse-vwap:locale' && warehouseRoute.test(pathname) &&
+      Object.hasOwn(languages, message.language)) {
+    loadCatalog(message.language).then(reply, () => reply(null));
+    return true;
+  }
+  if (message?.type === 'warehouse-vwap:native-chart') {
     if (Number(chartRoute.exec(pathname)?.[1]) !== resource ||
         ![0, 1].includes(realm) || !validQuality(quality) || data?.interval !== '1d' ||
         !Array.isArray(data.candles)) return;
@@ -82,23 +88,25 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     return true;
   }
 
-  if (message.type !== 'warehouse-vwap:quotes' || !warehouseRoute.test(pathname) ||
+  if (message?.type !== 'warehouse-vwap:quotes' || !warehouseRoute.test(pathname) ||
       ![0, 1, 2].includes(realm) ||
-      !Array.isArray(qualities) || qualities.length < 1 || qualities.length > 13 ||
-      !qualities.every(validQuality)) return;
+      !Array.isArray(products) || products.length === 0 ||
+      !products.every(product => validResource(product?.resource) &&
+        Array.isArray(product.qualities) && product.qualities.length > 0 &&
+        product.qualities.length <= 13 && product.qualities.every(validQuality))) return;
 
   const automatic = autoFetch !== false;
   const quotes = getQuotes({
     realm,
-    resource,
-    qualities: [...new Set(qualities)],
-    daysByQuality,
+    products,
     autoFetch: automatic,
     request: automatic && !peek
-      ? (operation, deadline) => requestFromWarehouse(sender, realm, resource, operation, deadline)
+      ? (operation, deadline, resource) => requestFromWarehouse(sender, realm, resource, operation, deadline)
       : undefined,
   });
-  void rememberProduct(resource, name);
+  for (const { resource, name } of products) {
+    if (name) void rememberProduct(resource, name);
+  }
   quotes.then(reply, () => reply(null));
   return true;
 });

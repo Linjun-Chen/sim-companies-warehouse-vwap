@@ -1,99 +1,53 @@
 (() => {
-  const messages = {
-    title: ['仓库 VWAP', 'Warehouse VWAP'],
-    settingsTitle: ['仓库 VWAP 设置', 'Warehouse VWAP settings'],
-    language: ['语言', 'Language'],
-    browserLanguage: ['跟随 Chrome', 'Use Chrome language'],
-    defaultQuote: ['默认报价', 'Default quote'],
-    discount: ['下调 %', 'Discount %'],
-    periodDays: ['统计天数', 'VWAP period (days)'],
-    periodOne: ['只取昨天 · {0}', 'Yesterday only · {0}'],
-    periodTwo: ['前天和昨天 · {0}', 'Yesterday and the day before · {0}'],
-    periodMany: ['截至昨天 · {0}', 'Through yesterday · {0}'],
-    weighting: ['多天合并时按成交量加权。', 'Combined days are weighted by trading volume.'],
-    save: ['保存', 'Save'],
-    saved: ['已保存', 'Saved'],
-    saveFailed: ['保存失败', 'Could not save'],
-    moreSettings: ['完整设置', 'All settings'],
-    productsAndGrades: ['商品与星级', 'Products and quality'],
-    productQuery: ['商品名称或编号', 'Product name or ID'],
-    findProduct: ['查找', 'Find'],
-    product: ['商品', 'Product'],
-    chooseProduct: ['请从搜索结果中选择商品', 'Choose a product from the results'],
-    productMissing: ['未找到商品', 'Product not found'],
-    hasRules: ['已设规则', 'Custom rules'],
-    saveDraftFirst: ['请先保存或撤销当前商品的修改', 'Save or undo this product’s changes first'],
-    inherit: ['留空继承上一级。天数截至昨天。', 'Leave blank to inherit. The period ends yesterday.'],
-    byQuality: ['按星级设置', 'By quality'],
-    quality: ['星级', 'Quality'],
-    saveProduct: ['保存商品', 'Save product'],
-    undo: ['撤销', 'Undo'],
-    displayAndData: ['显示与取数', 'Display and data'],
-    autoFetch: ['自动读取日线', 'Auto-fetch daily candles'],
-    showDate: ['统计日期', 'Quote dates'],
-    showChart: ['日线入口', 'Daily chart link'],
-    showPrices: ['报价显示', 'Show prices'],
-    bothPrices: ['VWAP 与折后价', 'Both prices'],
-    onlyVwap: ['只显示 VWAP', 'VWAP only'],
-    onlyDiscounted: ['只显示折后价', 'Discounted only'],
-    precision: ['价格小数位', 'Decimal places'],
-    automatic: ['自动', 'Auto'],
-    layout: ['库存布局', 'Warehouse layout'],
-    inline: ['同行', 'Inline'],
-    stacked: ['换行', 'New line'],
-    theme: ['主题', 'Theme'],
-    systemTheme: ['跟随系统', 'Use system theme'],
-    light: ['浅色', 'Light'],
-    dark: ['深色', 'Dark'],
-    yesterdayVwap: ['昨日 VWAP', 'Yesterday’s VWAP'],
-    previousVwap: ['上次 VWAP', 'Previous VWAP'],
-    periodVwap: ['{0} 日 VWAP', '{0}-day VWAP'],
-    previousPeriodVwap: ['上次 {0} 日 VWAP', 'Previous {0}-day VWAP'],
-    discounted: ['折后', 'Discounted'],
-    discountApplied: ['下调 {0}%', '{0}% off'],
-    nativeSource: ['已复用游戏原生日线', 'From the in-game chart'],
-    officialSource: ['官方日线', 'Official daily candles'],
-    tradingDays: ['{0}/{1} 天有成交', 'Trades on {0} of {1} days'],
-    chart: ['日线', 'Chart'],
-    chartHint: ['打开 Q{0} 图表并选择 Day（日线）以读取数据', 'Open the Q{0} chart and choose Day to read the data'],
-    chartToken: ['图表令牌', 'Chart token'],
-    chartAccess: ['请确认账号可查看分品质日线', 'Check access to daily charts by quality'],
-    checking: ['正在检查 VWAP', 'Checking VWAP'],
-    noTradesYesterday: ['昨日无成交', 'No trades yesterday'],
-    noTradesPeriod: ['统计区间无成交', 'No trades in this period'],
-    renewingToken: ['图表令牌已过期，等待更新', 'Waiting for a new chart token'],
-    gettingToken: ['正在申请图表访问', 'Requesting chart access'],
-    checkingChart: ['正在检查日线', 'Checking the daily chart'],
-    waitingForToken: ['等待获取图表令牌', 'Waiting for a chart token'],
-    queued: ['排队读取日线', 'Daily chart queued'],
-    nextRead: ['下次检查 {0}', 'Next check {0}'],
-    unavailable: ['接口暂不可用', 'Chart temporarily unavailable'],
-    unavailableHttp: ['接口暂不可用（{0}）', 'Chart temporarily unavailable ({0})'],
-    cacheMissing: ['该星级暂无日线缓存', 'No cached candles for this quality'],
-    signIn: ['请登录游戏后重试', 'Sign in to the game and try again'],
-    forbidden: ['图表请求被拒（403）', 'Chart access denied (403)'],
-    rateLimited: ['游戏接口限流（429）', 'Game rate limit (429)'],
-    unsupported: ['当前服务器没有原生日线', 'Daily charts are unavailable in this realm'],
-    network: ['网络连接失败', 'Connection failed'],
-    timeout: ['读取超时', 'Request timed out'],
-    tabClosed: ['游戏页连接已断开', 'Lost connection to the game tab'],
-    badJson: ['接口返回了非 JSON 数据', 'The chart returned invalid JSON'],
-    badSchema: ['接口数据格式无法识别', 'Unrecognized chart data'],
-    worker: ['仓库报价未连接，请刷新游戏页', 'Quotes disconnected. Reload the game tab'],
-    autoFetchOff: ['自动读取已关闭', 'Auto-fetch is off'],
-    awaitingUpdate: ['暂未更新', 'Update pending'],
-    updating: ['更新中', 'Updating'],
+  const languages = {
+    en: 'English',
+    'zh-CN': '简体中文',
+    'zh-TW': '繁體中文',
+    ja: '日本語',
+    ko: '한국어',
+    fr: 'Français',
+    de: 'Deutsch',
+    es: 'Español',
+    'pt-BR': 'Português',
+    it: 'Italiano',
+    ru: 'Русский',
+    pl: 'Polski',
+    tr: 'Türkçe',
+    vi: 'Tiếng Việt',
+    ar: 'العربية',
   };
+  const catalogs = new Map();
 
   function uiLanguage(preference, browserLanguage) {
-    if (preference !== 'auto') return preference;
-    return /^zh(?:-|$)/i.test(browserLanguage) ? 'zh-CN' : 'en';
+    if (Object.hasOwn(languages, preference)) return preference;
+    const [base, ...variants] = browserLanguage.toLowerCase().split('-');
+    if (base === 'zh') return variants.some(part => ['hant', 'tw', 'hk', 'mo'].includes(part)) ? 'zh-TW' : 'zh-CN';
+    if (base === 'pt') return 'pt-BR';
+    return Object.hasOwn(languages, base) ? base : 'en';
   }
 
-  function translator(language) {
-    const index = language === 'zh-CN' ? 0 : 1;
-    return (key, ...values) => messages[key][index].replace(/\{(\d+)\}/g, (_, slot) => values[slot]);
+  function direction(language) {
+    return language === 'ar' ? 'rtl' : 'ltr';
   }
 
-  globalThis.scwvI18n = { uiLanguage, translator };
+  function localeDirectory(language) {
+    return language.replace('-', '_');
+  }
+
+  async function loadCatalog(language) {
+    if (!catalogs.has(language)) {
+      const url = chrome.runtime.getURL(`_locales/${localeDirectory(language)}/messages.json`);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Missing locale ${language}`);
+      const dictionary = await response.json();
+      catalogs.set(language, Object.fromEntries(Object.entries(dictionary).map(([key, value]) => [key, value.message])));
+    }
+    return catalogs.get(language);
+  }
+
+  function translator(messages) {
+    return (key, ...values) => messages[key].replace(/\{(\d+)\}/g, (_, slot) => values[slot]);
+  }
+
+  globalThis.scwvI18n = { languages, uiLanguage, direction, localeDirectory, loadCatalog, translator };
 })();

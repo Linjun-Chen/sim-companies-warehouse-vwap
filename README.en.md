@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-This Chrome extension shows the official volume-weighted average price (VWAP) and a discounted price next to each quality in your Sim Companies warehouse.
+This Chrome extension reads official volume-weighted average prices (VWAP) for the products and qualities you have in stock. Quotes and discounted prices appear in the warehouse overview and on each product page.
 
 ## Install and update
 
@@ -12,13 +12,19 @@ This Chrome extension shows the official volume-weighted average price (VWAP) an
 
 ## Quote settings
 
-- Set the default discount and number of days in the toolbar popup. One day uses yesterday’s completed UTC candle. Two days include yesterday and the day before, weighted by trading volume. The preview shows the exact UTC dates.
-- Open **All settings** to change the interface language, display options, or per-product rules. Search by English name, Chinese name, or product ID. A blank field inherits the product or global setting. Quality overrides apply to Q0 through Q12.
-- The popup, settings, and warehouse quotes support English and Simplified Chinese. The default follows Chrome’s display language, with English for unsupported locales.
+- Set the default discount and number of days in the toolbar popup. The preview shows the exact UTC dates.
+- Open **All settings** to change the interface language, display options, or per-product rules. Search by English name, Chinese name, or product ID. The overview uses Chinese product names in Simplified Chinese and English product names in the other languages. A blank field inherits the product or global setting. Quality overrides apply to Q0 through Q12.
+- The popup, settings, and warehouse quotes support 15 languages. They follow Chrome’s display language by default. Choose a language manually in **All settings**. There you can also choose the auto-fetch scope, displayed fields, decimal places, number formatting, layout, and theme.
+
+## How the VWAP period works
+
+The period can span 1 to 365 calendar days and ends at yesterday’s UTC close. One day uses yesterday. Two days include yesterday and the day before.
+
+Period VWAP = Σ (daily VWAP × daily volume) ÷ Σ (daily volume). If 100 units trade at a daily VWAP of $8.000 and 300 at $10.000, the combined VWAP is $9.500. A 5% discount gives $9.025 before display rounding. Days without trades carry zero weight. If there are no trades in the period, the row shows a message.
 
 ## Data and refresh
 
-The extension uses official daily charts by quality, which require Supporter access. Opening the in-game daily chart can fill the cache. With auto-fetch enabled, the extension queries missing quotes for the warehouse product you have open and spaces its own requests at least five minutes apart.
+The extension uses official daily charts by quality, which require Supporter access. Opening the in-game daily chart can fill the cache. With auto-fetch enabled, it uses the game’s existing inventory list to queue missing quotes for stocked products and qualities in the current realm. You can also limit auto-fetch to the open product. All tabs share one cache and a minimum five-minute interval between extension requests.
 
 Quotes refresh at midnight UTC on open warehouse pages. The previous quote keeps its actual date until new data arrives. Reopening a warehouse page uses its local cache and checks for missing data.
 

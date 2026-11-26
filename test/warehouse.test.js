@@ -10,6 +10,10 @@ const controls = await readFile(new URL('../src/warehouse.js', import.meta.url),
 const settingsScript = await readFile(new URL('../src/preferences.js', import.meta.url), 'utf8');
 const datesScript = await readFile(new URL('../src/dates.js', import.meta.url), 'utf8');
 const i18nScript = await readFile(new URL('../src/i18n.js', import.meta.url), 'utf8');
+const locales = Object.fromEntries(await Promise.all(['en', 'zh_CN'].map(async directory => {
+  const path = `/_locales/${directory}/messages.json`;
+  return [path, JSON.parse(await readFile(new URL(`..${path}`, import.meta.url), 'utf8'))];
+})));
 
 function stockRow(quality) {
   const star = '<svg data-icon="star"></svg>';
@@ -70,9 +74,18 @@ test('all grades queue automatically, reopen from cache and refresh at UTC midni
   let scheduledAlarm;
   const oldChrome = globalThis.chrome;
   t.after(() => { globalThis.chrome = oldChrome; });
+  t.mock.method(globalThis, 'fetch', async url => {
+    const path = new URL(url).pathname;
+    assert.ok(locales[path]);
+    return Response.json(locales[path]);
+  });
   globalThis.chrome = {
     storage,
-    runtime: { id: extensionId, onMessage: { addListener(listener) { workerListener = listener; } } },
+    runtime: {
+      id: extensionId,
+      getURL: path => `chrome-extension://${extensionId}/${path}`,
+      onMessage: { addListener(listener) { workerListener = listener; } },
+    },
     alarms: {
       async get() { return scheduledAlarm; },
       async create(name, { when }) { scheduledAlarm = { name, scheduledTime: when }; },
@@ -167,9 +180,11 @@ test('all grades queue automatically, reopen from cache and refresh at UTC midni
   for (const listener of changeListeners) listener({ discount: { newValue: 5 } }, 'local');
   assert.match(line(5).textContent, /昨日 VWAP \$8\.500.*折后 \$8\.075/);
   for (const listener of changeListeners) listener({ quoteSettings: { newValue: { language: 'en' } } }, 'local');
+  await settle();
   assert.equal(line(5).lang, 'en');
   assert.match(line(5).textContent, /Yesterday’s VWAP \$8\.500.*Discounted \$8\.075/);
   for (const listener of changeListeners) listener({ quoteSettings: { newValue: { language: 'auto' } } }, 'local');
+  await settle();
   assert.equal(line(5).lang, 'zh-CN');
   assert.match(line(5).textContent, /昨日 VWAP \$8\.500.*折后 \$8\.075/);
   assert.equal(requests.length, 14);

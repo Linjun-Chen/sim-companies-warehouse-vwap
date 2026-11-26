@@ -4,7 +4,7 @@ import './i18n.js';
 
 export const { MAX_DAYS, settingsKeys, readPreferences } = globalThis.scwvPreferences;
 const { tradingDay, dateRange } = globalThis.scwvDates;
-const { uiLanguage, translator } = globalThis.scwvI18n;
+const { languages, uiLanguage, direction, loadCatalog, translator } = globalThis.scwvI18n;
 const browserLanguage = chrome.i18n.getUILanguage();
 
 export let language;
@@ -37,12 +37,15 @@ export function setNotice(output, message) {
   output.textContent = message ? text(message) : '';
 }
 
-function localize(preference) {
+async function localize(preference) {
   const nextLanguage = uiLanguage(preference, browserLanguage);
   if (language === nextLanguage) return;
+  const messages = await loadCatalog(nextLanguage);
+  if (nextLanguage !== uiLanguage(readPreferences(stored).language, browserLanguage)) return;
   language = nextLanguage;
-  text = translator(language);
+  text = translator(messages);
   document.documentElement.lang = language;
+  document.documentElement.dir = direction(language);
   for (const element of document.querySelectorAll('[data-message]')) {
     element.textContent = text(element.dataset.message);
   }
@@ -63,13 +66,22 @@ const defaultsKeys = ['discount', 'quoteSettings'];
 const stored = await chrome.storage.local.get(defaultsKeys);
 let periodTimer;
 days.max = MAX_DAYS;
+if (languageControl) {
+  for (const [tag, name] of Object.entries(languages)) {
+    const option = new Option(name, tag);
+    option.lang = tag;
+    option.dir = direction(tag);
+    languageControl.add(option);
+  }
+}
 
 function renderPeriod() {
+  if (!text) return;
   const { date, nextDay } = tradingDay();
   const count = days.valueAsNumber;
   if (days.validity.valid) {
     const label = count === 1 ? 'periodOne' : count === 2 ? 'periodTwo' : 'periodMany';
-    preview.textContent = text(label, dateRange(date, count));
+    preview.textContent = text(label, dateRange(date, count), count);
   } else {
     preview.textContent = '';
   }
@@ -77,20 +89,22 @@ function renderPeriod() {
   periodTimer = setTimeout(renderPeriod, Math.max(1, nextDay - Date.now()));
 }
 
-function loadDefaults() {
+async function loadDefaults() {
   const preferences = readPreferences(stored);
   for (const input of [discount, days]) {
     const value = String(preferences[input.name]);
     if (input.value === input.defaultValue) input.value = value;
     input.defaultValue = value;
   }
-  if (languageControl) languageControl.value = preferences.language;
+  if (languageControl) {
+    languageControl.value = Object.hasOwn(languages, preferences.language) ? preferences.language : 'auto';
+  }
   document.documentElement.dataset.theme = preferences.theme;
-  localize(preferences.language);
+  await localize(preferences.language);
   renderPeriod();
 }
 
-loadDefaults();
+await loadDefaults();
 days.addEventListener('input', renderPeriod);
 onSave(form, ({ discount, days }) => patchSettings({
   discount: discount.valueAsNumber,
@@ -113,5 +127,5 @@ chrome.storage.onChanged.addListener((changes, area) => {
   for (const key of defaultsKeys) {
     if (changes[key]) stored[key] = changes[key].newValue;
   }
-  loadDefaults();
+  void loadDefaults();
 });

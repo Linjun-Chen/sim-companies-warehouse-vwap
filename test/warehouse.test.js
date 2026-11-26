@@ -45,6 +45,11 @@ test('all grades queue automatically, reopen from cache and refresh at UTC midni
   const { window } = page;
   t.after(() => window.close());
   Object.defineProperty(window.document, 'visibilityState', { value: 'hidden' });
+  window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  window.HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+    this.dispatchEvent(new window.Event('close'));
+  };
 
   const local = { discount: 0 };
   const session = {};
@@ -53,7 +58,12 @@ test('all grades queue automatically, reopen from cache and refresh at UTC midni
     async get(keys) {
       return Object.fromEntries([keys].flat().map(key => [key, structuredClone(values[key])]));
     },
-    async set(changes) { Object.assign(values, structuredClone(changes)); },
+    async set(changes) {
+      Object.assign(values, structuredClone(changes));
+      if (values === local && Object.hasOwn(changes, 'productRules')) {
+        for (const listener of changeListeners) listener({ productRules: { newValue: local.productRules } }, 'local');
+      }
+    },
     async remove(key) { delete values[key]; },
   });
   const storage = {
@@ -190,11 +200,38 @@ test('all grades queue automatically, reopen from cache and refresh at UTC midni
   assert.equal(requests.length, 14);
 
   const rules = { 16: { discount: 10, days: 3, qualities: { 5: { discount: 0 }, 6: { days: 1 } } } };
-  for (const listener of changeListeners) listener({ productRules: { newValue: rules } }, 'local');
+  await storage.local.set({ productRules: rules });
   await settle();
   assert.match(line(5).textContent, /3 日 VWAP \$8\.500.*折后 \$8\.500/);
   assert.match(line(6).textContent, /昨日 VWAP \$8\.600.*折后 \$7\.740/);
   assert.match(line(7).textContent, /3 日 VWAP \$8\.700.*折后 \$7\.830/);
+  assert.equal(requests.length, 14);
+
+  const button = quality => line(quality).querySelector('.scwv-discount-trigger');
+  assert.equal(button(5).textContent, '0%');
+  assert.equal(button(6).textContent, '10%');
+  const gameClick = t.mock.fn();
+  line(5).parentElement.addEventListener('click', gameClick);
+  button(5).click();
+  assert.equal(gameClick.mock.callCount(), 0);
+  const editor = window.document.querySelector('.scwv-discount-editor');
+  const fields = [...editor.querySelectorAll('input')];
+  assert.equal(fields.length, 14);
+  assert.equal(window.document.activeElement, fields[6]);
+  assert.equal(fields[0].value, '10');
+  assert.equal(fields[6].value, '0');
+  assert.equal(fields[7].placeholder, '10');
+  fields[0].value = '7.5';
+  fields[0].dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.equal(fields[7].placeholder, '7.5');
+  fields[6].value = '';
+  fields[7].value = '0';
+  editor.querySelector('form').requestSubmit();
+  await settle();
+  assert.equal(editor.isConnected, false);
+  assert.match(line(5).textContent, /折后 \$7\.863 7\.5%/);
+  assert.match(line(6).textContent, /昨日 VWAP \$8\.600.*折后 \$8\.600 0%/);
+  assert.deepEqual(local.productRules, { 16: { discount: 7.5, days: 3, qualities: { 6: { days: 1, discount: 0 } } } });
   assert.equal(requests.length, 14);
 
   const reopen = async () => {

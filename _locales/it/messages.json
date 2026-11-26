@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Modifica sconti"},
+  "productDefault": {"message":"Sconto del prodotto"},
+  "inheritDiscount": {"message":"Lascia vuoto per usare lo sconto del prodotto o quello globale."},
+  "cancel": {"message":"Annulla"},
   "title": {"message":"VWAP del magazzino"},
   "settingsTitle": {"message":"Impostazioni del VWAP del magazzino"},
   "language": {"message":"Lingua"},

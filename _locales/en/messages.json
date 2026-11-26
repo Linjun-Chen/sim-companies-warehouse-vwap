@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Edit discounts"},
+  "productDefault": {"message":"Product default"},
+  "inheritDiscount": {"message":"Leave blank to use the product or global discount."},
+  "cancel": {"message":"Cancel"},
   "title": {"message":"Warehouse VWAP"},
   "settingsTitle": {"message":"Warehouse VWAP settings"},
   "language": {"message":"Language"},

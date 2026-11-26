@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"値引き率を編集"},
+  "productDefault": {"message":"商品の既定値"},
+  "inheritDiscount": {"message":"空欄には商品または全体の既定値が適用されます。"},
+  "cancel": {"message":"キャンセル"},
   "title": {"message":"倉庫 VWAP"},
   "settingsTitle": {"message":"倉庫 VWAP の設定"},
   "language": {"message":"言語"},

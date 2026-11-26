@@ -1,7 +1,9 @@
 import { createQuoteService, GAME_ORIGIN, tradingDay } from './market.js';
 import './i18n.js';
+import './preferences.js';
 
 const { loadCatalog, languages } = globalThis.scwvI18n;
+const { patchProductRules, validDiscount } = globalThis.scwvPreferences;
 const { getQuotes, rememberNative } = createQuoteService({
   local: chrome.storage.local,
   session: chrome.storage.session,
@@ -78,6 +80,15 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (message?.type === 'warehouse-vwap:locale' && warehouseRoute.test(pathname) &&
       Object.hasOwn(languages, message.language)) {
     loadCatalog(message.language).then(reply, () => reply(null));
+    return true;
+  }
+  if (message?.type === 'warehouse-vwap:discounts' && warehouseRoute.test(pathname) && validResource(resource)) {
+    const { changes } = message;
+    if (!Array.isArray(changes) || changes.length > 14 || !changes.every(change => change &&
+        (change.quality === null || validQuality(change.quality)) &&
+        (change.discount === null || validDiscount(change.discount)))) return;
+    patchProductRules(resource, changes.map(({ quality, discount }) => ({ quality, discount })))
+      .then(() => reply(true), () => reply(false));
     return true;
   }
   if (message?.type === 'warehouse-vwap:native-chart') {

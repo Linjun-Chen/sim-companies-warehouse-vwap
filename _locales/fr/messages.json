@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Modifier les remises"},
+  "productDefault": {"message":"Remise du produit"},
+  "inheritDiscount": {"message":"Laisser vide pour utiliser la remise du produit ou la remise globale."},
+  "cancel": {"message":"Annuler"},
   "title": {"message":"VWAP de l’entrepôt"},
   "settingsTitle": {"message":"Paramètres du VWAP de l’entrepôt"},
   "language": {"message":"Langue"},

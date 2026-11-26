@@ -33,6 +33,7 @@
   let current;
   let overview;
   let overviewKey;
+  let discountEditor;
   let scanTimer;
   let refreshTimer;
 
@@ -162,6 +163,118 @@
     return priceFormats.get(key).format(amount);
   }
 
+  function productName(resource) {
+    const names = productNames?.[resource]?.split(' / ');
+    return names?.[language === 'zh-CN' ? 0 : 1] ?? `${text('product')} #${resource}`;
+  }
+
+  function openDiscountEditor(resource, quality, line) {
+    if (discountEditor?.open) return;
+    const product = preferences.productRules[resource] ?? {};
+    const dialog = document.createElement('dialog');
+    dialog.className = 'scwv-discount-editor';
+    dialog.lang = language;
+    dialog.dir = direction(language);
+    dialog.dataset.theme = preferences.theme;
+    dialog.dataset.path = location.pathname;
+    const title = document.createElement('h2');
+    title.id = 'scwv-discount-title';
+    const detail = current?.detail;
+    const name = detail?.resource === resource ? detail.name : productName(resource);
+    title.textContent = `${name} · ${text('discount')}`;
+    dialog.setAttribute('aria-labelledby', title.id);
+
+    const form = document.createElement('form');
+    const fields = document.createElement('div');
+    fields.className = 'scwv-discount-fields';
+    const inputs = [];
+    function addField(container, label, quality, value) {
+      const field = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.max = '100';
+      input.step = '0.01';
+      input.inputMode = 'decimal';
+      input.defaultValue = value ?? '';
+      field.append(label, input);
+      container.append(field);
+      inputs.push({ quality, input });
+      return field;
+    }
+    const base = addField(form, text('productDefault'), null, product.discount);
+    base.className = 'scwv-discount-default';
+    for (let grade = 0; grade <= 12; grade += 1) {
+      addField(fields, `Q${grade}`, grade, product.qualities?.[grade]?.discount);
+    }
+    function updateInheritance() {
+      const [{ input: productDiscount }, ...grades] = inputs;
+      productDiscount.placeholder = preferences.discount;
+      for (const { input } of grades) input.placeholder = productDiscount.value || productDiscount.placeholder;
+    }
+    updateInheritance();
+    base.addEventListener('input', updateInheritance);
+
+    const hint = document.createElement('p');
+    hint.textContent = text('inheritDiscount');
+    const actions = document.createElement('div');
+    actions.className = 'scwv-discount-actions';
+    const notice = document.createElement('output');
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = text('cancel');
+    cancel.addEventListener('click', () => dialog.close());
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.textContent = text('save');
+    actions.append(notice, cancel, save);
+    form.append(fields, hint, actions);
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const changes = inputs.filter(({ input }) => input.value !== input.defaultValue)
+        .map(({ quality, input }) => ({ quality, discount: input.value === '' ? null : input.valueAsNumber }));
+      save.disabled = true;
+      const saved = !changes.length || await chrome.runtime.sendMessage({
+        type: 'warehouse-vwap:discounts', pathname: location.pathname, resource, changes,
+      }).catch(() => false);
+      if (saved) {
+        dialog.close();
+      } else {
+        notice.textContent = text('saveFailed');
+        save.disabled = false;
+      }
+    });
+
+    dialog.addEventListener('close', () => {
+      dialog.remove();
+      if (discountEditor === dialog) discountEditor = undefined;
+      if (dialog.dataset.path === location.pathname) line.querySelector('.scwv-discount-trigger')?.focus();
+    });
+    dialog.append(title, form);
+    document.body.append(dialog);
+    discountEditor = dialog;
+    dialog.showModal();
+    const selected = inputs[quality + 1].input;
+    selected.focus();
+    selected.select();
+  }
+
+  function discountButton(resource, quality, discount, line) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'scwv-discount-trigger';
+    button.dir = 'ltr';
+    button.textContent = `${discount}%`;
+    button.title = text('editDiscounts');
+    button.setAttribute('aria-label', `${text('editDiscounts')} · Q${quality} · ${text('discountApplied', discount)}`);
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      openDiscountEditor(resource, quality, line);
+    });
+    return button;
+  }
+
   function timeText(timestamp) {
     if (!timeFormats.has(language)) {
       timeFormats.set(language, new Intl.DateTimeFormat(language, {
@@ -233,8 +346,7 @@
     const groups = context.products.map(({ resource, qualities }) => {
       const group = document.createElement('div');
       const name = document.createElement('b');
-      const names = productNames[resource]?.split(' / ');
-      name.textContent = names?.[language === 'zh-CN' ? 0 : 1] ?? `${text('product')} #${resource}`;
+      name.textContent = productName(resource);
       group.append(name);
       for (const quality of qualities) {
         const line = document.createElement('div');
@@ -284,12 +396,17 @@
       pill.dir = direction(language);
       pill.dataset.layout = display.layout;
       pill.dataset.state = stalePrice ? 'stale' : quote?.status ?? 'checking';
+      const children = [];
+      const edit = display.discounted ? discountButton(resource, quality, discount, line) : null;
       if (price?.status === 'price') {
-        const children = [];
         const label = days === 1 ? text(stalePrice ? 'previousVwap' : 'yesterdayVwap')
           : text(stalePrice ? 'previousPeriodVwap' : 'periodVwap', days);
         if (display.vwap) children.push(textPart(label, priceText(price.vwap)));
-        if (display.discounted) children.push(textPart(text('discounted'), priceText(price.vwap * (1 - discount / 100))));
+        if (edit) {
+          const part = textPart(text('discounted'), priceText(price.vwap * (1 - discount / 100)));
+          part.append(' ', edit);
+          children.push(part);
+        }
         if (display.date || stalePrice) {
           const day = document.createElement('small');
           day.textContent = range;
@@ -312,12 +429,12 @@
         const progress = stalePrice && context.autoFetch ? ` · ${status}${caption ? ` · ${caption}` : ''}` : '';
         pill.title = [ `Q${quality}`, range, source, coverage, text('discountApplied', discount) ]
           .filter(Boolean).join(' · ') + progress;
-        show(pill, children, JSON.stringify([language, ...children.map(child => [child.textContent, child.getAttribute('href')])]));
       } else {
         const statusText = document.createElement('span');
         statusText.className = 'scwv-status';
         statusText.textContent = status;
-        const children = [statusText];
+        children.push(statusText);
+        if (edit) children.push(edit);
         const detail = quote?.detail?.stage === 'token' ? ` · ${text('chartToken')}` : '';
         const help = quote?.status === 'forbidden' ? ` · ${text('chartAccess')}` : '';
         if (caption) {
@@ -327,8 +444,9 @@
         }
         if (showChart) children.push(chartLink(chart, quality, text));
         pill.title = `Q${quality} · ${range}${detail}${help}`;
-        show(pill, children, `status/${language}/${status}/${caption}/${showChart ? `${context.realm}/${resource}/${quality}` : ''}`);
       }
+      show(pill, children, JSON.stringify([language, resource, quality,
+        ...children.map(child => [child.textContent, child.getAttribute('href')])]));
     }
   }
 
@@ -413,6 +531,7 @@
   }
 
   function scan(refreshNow = false) {
+    if (discountEditor?.open && discountEditor.dataset.path !== location.pathname) discountEditor.close();
     const context = readContext();
     if (!context) {
       if (current) {

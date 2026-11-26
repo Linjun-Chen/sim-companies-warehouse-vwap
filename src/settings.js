@@ -2,6 +2,7 @@ import { MAX_DAYS, settingsKeys, readPreferences, patchSettings, onSave, setNoti
 import './product-names.js';
 
 const productNames = globalThis.scwvProductNames;
+const { patchProductRules } = globalThis.scwvPreferences;
 const find = selector => document.querySelector(selector);
 const picker = find('#product-picker');
 const query = find('#product-query');
@@ -142,27 +143,14 @@ ruleForm.addEventListener('reset', event => {
 });
 gradeTable.addEventListener('invalid', () => { gradeTable.open = true; }, true);
 
-function readRule([discount, days]) {
-  const rule = {};
-  if (discount.value !== '') rule.discount = discount.valueAsNumber;
-  if (days.value !== '') rule.days = days.valueAsNumber;
-  return rule;
-}
-
 onSave(ruleForm, async () => {
-  const id = productId;
-  const product = readRule(base);
-  const qualities = grades.map(readRule).map((rule, quality) => [quality, rule])
-    .filter(([, rule]) => Object.keys(rule).length);
-  if (qualities.length) product.qualities = Object.fromEntries(qualities);
-
-  stored.productRules = await navigator.locks.request('warehouse-vwap:product-rules', async () => {
-    const { productRules = {} } = await chrome.storage.local.get('productRules');
-    if (Object.keys(product).length) productRules[id] = product;
-    else delete productRules[id];
-    await chrome.storage.local.set({ productRules });
-    return productRules;
-  });
+  const changes = [base, ...grades].map(([discount, days], index) => {
+    const change = { quality: index === 0 ? null : index - 1 };
+    if (discount.value !== discount.defaultValue) change.discount = discount.value === '' ? null : discount.valueAsNumber;
+    if (days.value !== days.defaultValue) change.days = days.value === '' ? null : days.valueAsNumber;
+    return change;
+  }).filter(change => 'discount' in change || 'days' in change);
+  stored.productRules = await patchProductRules(productId, changes);
   preferences = readPreferences(stored);
   showRules();
   setNotice(pickerNotice);

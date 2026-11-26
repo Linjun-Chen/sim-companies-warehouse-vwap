@@ -12,6 +12,7 @@ This Chrome extension reads official volume-weighted average prices (VWAP) for t
 
 ## Quote settings
 
+- Click the percentage next to a discounted warehouse price to edit the product default and the discounts for Q0 through Q12. Blank fields inherit. Saving recalculates prices immediately.
 - Set the default discount and number of days in the toolbar popup. The preview shows the exact UTC dates.
 - Open **All settings** to change the interface language, display options, or per-product rules. Search by English name, Chinese name, or product ID. The overview uses Chinese product names in Simplified Chinese and English product names in the other languages. A blank field inherits the product or global setting. Quality overrides apply to Q0 through Q12.
 - The popup, settings, and warehouse quotes support 15 languages. They follow Chrome’s display language by default. Choose a language manually in **All settings**. There you can also choose the auto-fetch scope, displayed fields, decimal places, number formatting, layout, and theme.

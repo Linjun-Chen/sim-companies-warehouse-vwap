@@ -42,5 +42,32 @@
     };
   }
 
-  globalThis.scwvPreferences = { MAX_DAYS, settingsKeys, readPreferences, priceRule, validDays };
+  function patchProductRules(productId, changes) {
+    return navigator.locks.request('warehouse-vwap:product-rules', async () => {
+      const { productRules = {} } = await chrome.storage.local.get('productRules');
+      if (!changes.length) return productRules;
+      const product = productRules[productId] ?? {};
+      const qualities = product.qualities ?? {};
+      for (const { quality, ...fields } of changes) {
+        const rule = quality === null ? product : qualities[quality] ?? {};
+        for (const [field, value] of Object.entries(fields)) {
+          if (value === null) delete rule[field];
+          else rule[field] = value;
+        }
+        if (quality === null) continue;
+        if (Object.keys(rule).length) qualities[quality] = rule;
+        else delete qualities[quality];
+      }
+      if (Object.keys(qualities).length) product.qualities = qualities;
+      else delete product.qualities;
+      if (Object.keys(product).length) productRules[productId] = product;
+      else delete productRules[productId];
+      await chrome.storage.local.set({ productRules });
+      return productRules;
+    });
+  }
+
+  globalThis.scwvPreferences = {
+    MAX_DAYS, settingsKeys, readPreferences, priceRule, patchProductRules, validDiscount, validDays,
+  };
 })();

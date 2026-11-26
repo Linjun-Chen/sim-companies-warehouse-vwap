@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Editar descontos"},
+  "productDefault": {"message":"Padrão do produto"},
+  "inheritDiscount": {"message":"Deixe em branco para aplicar o desconto do produto ou o padrão global."},
+  "cancel": {"message":"Cancelar"},
   "title": {"message":"VWAP do estoque"},
   "settingsTitle": {"message":"Configurações do VWAP do estoque"},
   "language": {"message":"Idioma"},

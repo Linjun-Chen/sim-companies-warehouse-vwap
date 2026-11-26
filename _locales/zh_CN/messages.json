@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"编辑折扣"},
+  "productDefault": {"message":"商品默认"},
+  "inheritDiscount": {"message":"留空使用商品或全局默认折扣。"},
+  "cancel": {"message":"取消"},
   "title": {"message":"仓库 VWAP"},
   "settingsTitle": {"message":"仓库 VWAP 设置"},
   "language": {"message":"语言"},

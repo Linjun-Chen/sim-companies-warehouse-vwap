@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Sửa mức giảm giá"},
+  "productDefault": {"message":"Mặc định của sản phẩm"},
+  "inheritDiscount": {"message":"Để trống để dùng mức giảm giá của sản phẩm hoặc mức mặc định chung."},
+  "cancel": {"message":"Hủy"},
   "title": {"message":"VWAP kho hàng"},
   "settingsTitle": {"message":"Cài đặt VWAP kho hàng"},
   "language": {"message":"Ngôn ngữ"},

@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"Editar descuentos"},
+  "productDefault": {"message":"Descuento del producto"},
+  "inheritDiscount": {"message":"Deja el campo vacío para usar el descuento del producto o el descuento general."},
+  "cancel": {"message":"Cancelar"},
   "title": {"message":"VWAP del almacén"},
   "settingsTitle": {"message":"Ajustes del VWAP del almacén"},
   "language": {"message":"Idioma"},

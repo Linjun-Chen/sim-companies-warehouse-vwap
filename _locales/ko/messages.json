@@ -1,4 +1,8 @@
 {
+  "editDiscounts": {"message":"할인율 수정"},
+  "productDefault": {"message":"상품 기본값"},
+  "inheritDiscount": {"message":"비워 두면 상품 또는 전체 기본 할인율이 적용됩니다."},
+  "cancel": {"message":"취소"},
   "title": {"message":"창고 VWAP"},
   "settingsTitle": {"message":"창고 VWAP 설정"},
   "language": {"message":"언어"},

@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "minimum_chrome_version": "114",
+  "name": "Sim Companies 仓库 VWAP",
+  "version": "1.1.2",
+  "description": "按仓库商品和星级显示官方日线 VWAP，支持自定义统计天数和折后单价。",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": ["https://www.simcompanies.com/*"],
+  "background": {
+    "service_worker": "src/worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "仓库 VWAP 设置",
+    "default_popup": "src/popup.html"
+  },
+  "options_ui": {
+    "page": "src/settings.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.simcompanies.com/*"],
+      "css": ["src/warehouse.css"],
+      "js": ["src/preferences.js", "src/warehouse.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.simcompanies.com/*"],
+      "js": ["src/native-chart.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+.scwv-quote {
+  border-inline-start: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  color: inherit;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15em 0.62em;
+  margin: 0.15em 0 0.15em 0.62em;
+  padding-inline-start: 0.62em;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  vertical-align: middle;
+  font-size: 0.79em;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.scwv-quote > span:not(.scwv-status) {
+  white-space: nowrap;
+}
+
+.scwv-quote > small {
+  font-size: 0.86em;
+  opacity: 0.88;
+  overflow-wrap: anywhere;
+}
+
+.scwv-quote > a {
+  color: inherit;
+  font-size: 0.9em;
+  text-decoration: underline;
+  text-underline-offset: 0.19em;
+  white-space: nowrap;
+}
+
+.scwv-quote > a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.scwv-quote[data-layout="stacked"] {
+  display: flex;
+  width: fit-content;
+  flex-basis: 100%;
+  margin-inline-start: 0;
+}
+
+@media (max-width: 620px) {
+  .scwv-quote {
+    display: flex;
+    width: fit-content;
+    margin-inline-start: 0;
+  }
+}

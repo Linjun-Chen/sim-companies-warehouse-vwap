@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>仓库 VWAP 设置</title>
+    <link rel="stylesheet" href="settings.css">
+    <script type="module" src="settings.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>仓库 VWAP</h1>
+      <section aria-labelledby="defaults-title">
+        <h2 id="defaults-title">全局默认</h2>
+        <form id="defaults">
+          <div class="fields">
+            <label>下调 %
+              <input name="discount" type="number" min="0" max="100" step="0.01" inputmode="decimal" required>
+            </label>
+            <label>VWAP 天数
+              <input name="days" type="number" min="1" step="1" inputmode="numeric" required>
+            </label>
+          </div>
+          <div class="actions">
+            <button>保存</button>
+            <output role="status"></output>
+          </div>
+        </form>
+      </section>
+
+      <section aria-labelledby="product-title">
+        <h2 id="product-title">商品与星级</h2>
+        <form id="product-picker">
+          <div class="picker">
+            <input id="product-query" type="search" list="products" autocomplete="off" required
+              placeholder="名称或编号" aria-label="商品名称或编号">
+            <button>查找</button>
+          </div>
+          <datalist id="products"></datalist>
+          <output id="picker-notice" role="status"></output>
+        </form>
+
+        <form id="product-rules" hidden>
+          <h3 id="product-name"></h3>
+          <div class="fields" id="product-defaults">
+            <label>下调 %
+              <input name="discount" type="number" min="0" max="100" step="0.01" inputmode="decimal">
+            </label>
+            <label>VWAP 天数
+              <input name="days" type="number" min="1" step="1" inputmode="numeric">
+            </label>
+          </div>
+          <p class="hint">留空继承上一级</p>
+          <details id="quality-settings">
+            <summary>按星级设置</summary>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">星级</th>
+                  <th scope="col">下调 %</th>
+                  <th scope="col">VWAP 天数</th>
+                </tr>
+              </thead>
+              <tbody id="quality-rows"></tbody>
+            </table>
+          </details>
+          <div class="actions">
+            <button>保存商品</button>
+            <button type="reset" class="text-button" hidden>撤销</button>
+            <output role="status"></output>
+          </div>
+        </form>
+      </section>
+
+      <details class="advanced">
+        <summary>显示与取数</summary>
+        <form id="appearance">
+          <div class="checks">
+            <label><input name="autoFetch" type="checkbox"> 自动读取日线</label>
+            <label><input name="date" type="checkbox"> 统计日期</label>
+            <label><input name="chartLink" type="checkbox"> 日线入口</label>
+          </div>
+          <div class="fields">
+            <label>报价显示
+              <select name="prices">
+                <option value="both">VWAP 与折后价</option>
+                <option value="vwap">只显示 VWAP</option>
+                <option value="discounted">只显示折后价</option>
+              </select>
+            </label>
+            <label>价格小数位
+              <select name="precision">
+                <option value="auto">自动</option>
+                <option value="2">2 位</option>
+                <option value="3">3 位</option>
+                <option value="4">4 位</option>
+              </select>
+            </label>
+            <label>库存布局
+              <select name="layout">
+                <option value="inline">同行</option>
+                <option value="stacked">换行</option>
+              </select>
+            </label>
+            <label>主题
+              <select name="theme">
+                <option value="system">跟随系统</option>
+                <option value="light">浅色</option>
+                <option value="dark">深色</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button>保存</button>
+            <output role="status"></output>
+          </div>
+        </form>
+      </details>
+    </main>
+
+    <template id="quality-row">
+      <tr>
+        <th scope="row"></th>
+        <td><input type="number" min="0" max="100" step="0.01" inputmode="decimal"></td>
+        <td><input type="number" min="1" step="1" inputmode="numeric"></td>
+      </tr>
+    </template>
+  </body>
+</html>

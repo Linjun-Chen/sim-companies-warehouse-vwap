@@ -1,0 +1,25 @@
+name: 问题反馈
+description: 反馈安装、报价或设置问题
+labels: [bug]
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: 扩展和 Chrome 版本
+      placeholder: 1.1.2 / Chrome 158
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 如果涉及报价，请填上服务器、商品、星级、VWAP 天数和统计日期（UTC）。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 实际和预期结果
+      placeholder: 可以附上库存行显示的价格或状态文字。
+    validations:
+      required: true

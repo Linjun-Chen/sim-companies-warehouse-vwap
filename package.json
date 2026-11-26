@@ -1,0 +1,12 @@
+{
+  "name": "sim-companies-warehouse-vwap",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "jsdom": "27.4.0"
+  }
+}

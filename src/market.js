@@ -113,15 +113,17 @@ export function createQuoteService({ local, session, clock = Date.now }) {
   }
 
   async function load(context) {
-    const { realm, resource, qualities, request, autoFetch = Boolean(request), daysByQuality } = context;
-    const daysFor = quality => validDays(daysByQuality?.[quality]) ? daysByQuality[quality] : 1;
+    const { realm, request, autoFetch = Boolean(request), products = [context] } = context;
+    const targets = products.flatMap(({ resource, qualities, daysByQuality }) => qualities.map(quality => ({
+      resource, quality, days: validDays(daysByQuality?.[quality]) ? daysByQuality[quality] : 1,
+    })));
     const now = clock();
     const day = tradingDay(now);
     if (realm === 2) {
       return {
         date: day.date,
         refreshAt: day.nextDay,
-        quotes: qualities.map(quality => ({ quality, days: daysFor(quality), status: 'unsupported' })),
+        quotes: targets.map(target => ({ ...target, status: 'unsupported' })),
       };
     }
 
@@ -130,24 +132,26 @@ export function createQuoteService({ local, session, clock = Date.now }) {
       session.get(['chartToken', 'tokenError']),
     ]);
     const cache = readCache(storage.quoteCache);
-    const key = quality => `${realm}/${resource}/${quality}`;
-    const quoteFor = quality => {
-      const { saved, failure } = cache.entries[key(quality)] ?? {};
-      const quote = saved?.date === day.date ? cachedQuote(saved, daysFor(quality)) : undefined;
+    const key = ({ resource, quality }) => `${realm}/${resource}/${quality}`;
+    const quoteFor = target => {
+      const { saved, failure } = cache.entries[key(target)] ?? {};
+      const quote = saved?.date === day.date ? cachedQuote(saved, target.days) : undefined;
       return quote ?? (failure?.date === day.date ? failure : undefined);
     };
     let nextRequestAt = storage.nextRequestAt ?? 0;
     let { chartToken, tokenError } = sessionData;
     let tokenRetryAt = tokenError?.retryAt ?? 0;
-    const quality = qualities.find(level => {
-      const entry = quoteFor(level);
+    const target = targets.find(pair => {
+      const entry = quoteFor(pair);
       return !entry || (entry.retryAt !== undefined && entry.retryAt <= now);
     });
 
-    if (request && quality !== undefined && now >= Math.max(nextRequestAt, tokenRetryAt)) {
+    if (request && target && now >= Math.max(nextRequestAt, tokenRetryAt)) {
       const stage = chartToken ? 'chart' : 'token';
-      const operation = chartToken ? { stage, token: chartToken, quality } : { stage };
-      const result = await reserveRequest(request, operation, nextRequestAt);
+      const operation = chartToken ? { stage, token: chartToken, quality: target.quality } : { stage };
+      const result = await reserveRequest(
+        (operation, deadline) => request(operation, deadline, target.resource), operation, nextRequestAt,
+      );
       nextRequestAt = result.nextRequestAt;
 
       if (!result.skipped && stage === 'token') {
@@ -169,13 +173,13 @@ export function createQuoteService({ local, session, clock = Date.now }) {
       }
 
       if (!result.skipped && stage === 'chart') {
-        const entryKey = key(quality);
+        const entryKey = key(target);
         const existing = cache.entries[entryKey] ?? {};
         const series = result.status === 200 && !result.issue ? decodeDailySeries(result.data, day.timestamp) : null;
         let failure;
         if (series) {
           cache.entries[entryKey] = { saved: { date: day.date, series, source: 'automatic' } };
-        } else if (result.status === 404 && !quoteFor(quality)?.refreshToken) {
+        } else if (result.status === 404 && !quoteFor(target)?.refreshToken) {
           chartToken = undefined;
           await session.remove('chartToken');
           failure = { status: 'queued', retryAt: nextRequestAt, refreshToken: true, detail: { issue: 'renew-token' } };
@@ -193,19 +197,18 @@ export function createQuoteService({ local, session, clock = Date.now }) {
     }
 
     let refreshAt = day.nextDay;
-    const quotes = qualities.map(level => {
-      const entry = quoteFor(level);
+    const quotes = targets.map(target => {
+      const entry = quoteFor(target);
       const open = !entry || entry.retryAt !== undefined;
       const retryAt = autoFetch && open
         ? Math.max(nextRequestAt, tokenRetryAt, entry?.retryAt ?? 0)
         : undefined;
       if (autoFetch && open) refreshAt = Math.min(refreshAt, retryAt);
       const failure = open && now < tokenRetryAt ? tokenError : entry;
-      const saved = cache.entries[key(level)]?.saved;
-      const previous = saved?.date < day.date ? cachedQuote(saved, daysFor(level)) : undefined;
+      const saved = cache.entries[key(target)]?.saved;
+      const previous = saved?.date < day.date ? cachedQuote(saved, target.days) : undefined;
       return {
-        quality: level,
-        days: daysFor(level),
+        ...target,
         status: failure?.status ?? (autoFetch ? 'queued' : 'cache-only'),
         detail: failure?.detail,
         vwap: entry?.vwap,

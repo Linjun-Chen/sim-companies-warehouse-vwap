@@ -115,7 +115,7 @@ a {
 .hint { margin-block-start: 0.45rem; }
 #period-preview { color: CanvasText; }
 #period-preview:empty { display: none; }
-#period-rule { margin-block-start: 0.2rem; }
+.calculation { margin-block-start: 0.3rem; font-size: 0.875rem; color: var(--muted); }
 output:empty { display: none; }
 #picker-notice:not(:empty) { display: block; margin-block-start: 0.45rem; }
 
@@ -132,7 +132,8 @@ table {
 th, td {
   text-align: start;
   font-weight: 500;
-  padding: 0.125rem 0.65rem 0.125rem 0;
+  padding-block: 0.125rem;
+  padding-inline-end: 0.65rem;
   border-block-end: 1px solid var(--line);
 }
 th:first-child { width: 3.5rem; }
@@ -153,4 +154,8 @@ table input[type="number"] { border-block-end: 0; min-height: 2rem; }
 .popup { width: 300px; }
 .popup main { padding: 0.9rem 1rem; }
 .popup h1 { font-size: 1.1rem; margin-block-end: 0.75rem; }
-.popup a { font-size: 0.875rem; margin-inline-start: auto; white-space: nowrap; }
+.popup a { font-size: 0.875rem; margin-inline-start: auto; }
+
+@media (max-width: 360px) {
+  .advanced .fields, .checks { grid-template-columns: 1fr; }
+}

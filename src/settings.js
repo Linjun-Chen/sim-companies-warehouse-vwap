@@ -1,6 +1,7 @@
 import { MAX_DAYS, settingsKeys, readPreferences, patchSettings, onSave, setNotice, language, text } from './defaults.js';
-import { productNames } from './product-names.js';
+import './product-names.js';
 
+const productNames = globalThis.scwvProductNames;
 const find = selector => document.querySelector(selector);
 const picker = find('#product-picker');
 const query = find('#product-query');
@@ -33,7 +34,7 @@ let productId;
 
 function productName(id) {
   const names = productNames[id]?.split(' / ');
-  return names?.[language === 'en' ? 1 : 0] ?? stored.knownProducts?.[id] ?? text('product');
+  return names?.[language === 'zh-CN' ? 0 : 1] ?? stored.knownProducts?.[id] ?? text('product');
 }
 
 function productLabel(id) {
@@ -119,7 +120,8 @@ picker.addEventListener('submit', event => {
   const options = [...datalist.options].map(option => {
     const id = option.dataset.id;
     const names = productNames[id]?.split(' / ') ?? [productName(id)];
-    return { id, terms: [option.value, ...names].map(searchTerm) };
+    const knownName = stored.knownProducts?.[id];
+    return { id, terms: [option.value, ...names, knownName].filter(Boolean).map(searchTerm) };
   });
   const exact = options.filter(option => option.terms.includes(term));
   const matches = exact.length ? exact : options.filter(option => term && option.terms.some(name => name.includes(term)));
@@ -168,24 +170,33 @@ onSave(ruleForm, async () => {
 });
 
 const appearance = find('#appearance');
-const { autoFetch, date, prices, chartLink, precision, layout, theme } = appearance.elements;
+const { autoFetch, scope, date, prices, chartLink, precision, layout, theme, overview, coverage, localizedNumbers } =
+  appearance.elements;
 autoFetch.checked = preferences.autoFetch;
+scope.value = preferences.scope;
 date.checked = preferences.display.date;
 prices.value = preferences.display.vwap
   ? (preferences.display.discounted ? 'both' : 'vwap')
   : 'discounted';
 chartLink.checked = preferences.display.chartLink;
+overview.checked = preferences.display.overview;
+coverage.checked = preferences.display.coverage;
+localizedNumbers.checked = preferences.display.localizedNumbers;
 precision.value = preferences.display.precision;
 layout.value = preferences.display.layout;
 theme.value = preferences.theme;
 onSave(appearance, () => patchSettings({
   autoFetch: autoFetch.checked,
+  scope: scope.value,
   theme: theme.value,
   display: {
     vwap: prices.value !== 'discounted',
     discounted: prices.value !== 'vwap',
     date: date.checked,
     chartLink: chartLink.checked,
+    overview: overview.checked,
+    coverage: coverage.checked,
+    localizedNumbers: localizedNumbers.checked,
     precision: precision.value === 'auto' ? 'auto' : Number(precision.value),
     layout: layout.value,
   },

@@ -1,23 +1,16 @@
 (() => {
-  const routePattern = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?headquarters\/warehouse\/[^/]+\/?$/i;
+  const routePattern = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?headquarters\/warehouse(?:\/([^/]+))?\/?$/i;
   const resourcePattern = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?encyclopedia\/(\d+)\/resource\/(\d+)\/?$/i;
   const chartRoute = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?market\/resource\/(\d+)\/chart\/?$/i;
   const { settingsKeys, readPreferences, priceRule } = globalThis.scwvPreferences;
   const { tradingDay, dateRange } = globalThis.scwvDates;
-  const { uiLanguage, translator } = globalThis.scwvI18n;
+  const { uiLanguage, direction, translator } = globalThis.scwvI18n;
+  const productNames = globalThis.scwvProductNames;
   const browserLanguage = chrome.i18n.getUILanguage();
   const quoteClass = 'scwv-quote';
-  const formatPrice = Object.fromEntries([2, 3, 4].map(digits => [digits, new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })]));
-  const formatTime = Object.fromEntries(['zh-CN', 'en'].map(language => [language, new Intl.DateTimeFormat(language, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  })]));
+  const catalogReads = new Map();
+  const priceFormats = new Map();
+  const timeFormats = new Map();
   const statuses = {
     'cache-only': 'cacheMissing',
     'sign-in': 'signIn',
@@ -34,7 +27,12 @@
   };
   const storedPreferences = {};
   let preferences = readPreferences();
+  let language;
+  let text;
+  let inventory;
   let current;
+  let overview;
+  let overviewKey;
   let scanTimer;
   let refreshTimer;
 
@@ -59,9 +57,7 @@
     return quality === null ? null : { quality, line };
   }
 
-  function readInventory() {
-    const path = location.pathname;
-    if (!routePattern.test(path)) return null;
+  function readDetail() {
     for (const link of document.querySelectorAll('a[href*="/encyclopedia/"][href*="/resource/"]')) {
       if (link.origin !== location.origin || !link.querySelector(':scope > img')) continue;
       const match = resourcePattern.exec(link.pathname);
@@ -75,10 +71,33 @@
         const realm = Number(match[1]);
         const resource = Number(match[2]);
         const qualities = [...new Set(rows.map(row => row.quality))];
-        return { realm, resource, name, qualities, rows, id: `${path}:${realm}/${resource}:${qualities.join(',')}` };
+        return { realm, resource, name, qualities, rows: rows.map(row => ({ ...row, resource })) };
       }
     }
     return null;
+  }
+
+  function readContext() {
+    const path = location.pathname;
+    const route = routePattern.exec(path);
+    if (!route) return null;
+
+    const isOverview = !route[1];
+    const detail = isOverview ? null : readDetail();
+    if (!isOverview && !detail) return null;
+    const realm = detail?.realm ?? inventory?.realm;
+    const stocked = inventory?.realm === realm ? inventory?.products : undefined;
+    const products = preferences.scope === 'stock' || isOverview ? [...(stocked ?? [])] : [];
+    if (detail) {
+      const index = products.findIndex(product => product.resource === detail.resource);
+      if (index >= 0) products.splice(index, 1);
+      const { resource, name, qualities } = detail;
+      products.unshift({ resource, name, qualities });
+    }
+    if (!products.length) return null;
+    const autoFetch = preferences.autoFetch && (preferences.scope === 'stock' || !isOverview);
+    const id = JSON.stringify([path, realm, products.map(({ resource, qualities }) => [resource, qualities])]);
+    return { id, realm, detail, isOverview, products, autoFetch };
   }
 
   function show(node, children, key) {
@@ -130,8 +149,26 @@
   }
 
   function priceText(amount) {
-    const { precision } = preferences.display;
-    return formatPrice[precision === 'auto' ? (amount < 10 ? 3 : 2) : precision].format(amount);
+    const { precision, localizedNumbers } = preferences.display;
+    const digits = precision === 'auto' ? (amount < 10 ? 3 : 2) : precision;
+    const locale = localizedNumbers ? language : 'en-US';
+    const key = `${locale}/${digits}`;
+    if (!priceFormats.has(key)) {
+      priceFormats.set(key, new Intl.NumberFormat(locale, {
+        style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol',
+        minimumFractionDigits: digits, maximumFractionDigits: digits,
+      }));
+    }
+    return priceFormats.get(key).format(amount);
+  }
+
+  function timeText(timestamp) {
+    if (!timeFormats.has(language)) {
+      timeFormats.set(language, new Intl.DateTimeFormat(language, {
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+      }));
+    }
+    return timeFormats.get(language).format(timestamp);
   }
 
   function quoteStatus(quote, stage, text) {
@@ -157,16 +194,74 @@
     return link;
   }
 
+  function overviewRows(context, date, snapshot, quotes) {
+    // This is the game's warehouse product grid. Keep the summary inside it
+    // so it follows the game's scroll container and disappears with the page.
+    const grid = context.isOverview && preferences.display.overview && document.querySelector('.e14va4ca7');
+    if (!grid) {
+      overview?.remove();
+      overview = undefined;
+      return [];
+    }
+    if (overview?.parentElement !== grid) {
+      overview = document.createElement('details');
+      overview.className = 'scwv-overview';
+      overview.append(document.createElement('summary'), document.createElement('div'));
+      grid.append(overview);
+      overviewKey = undefined;
+    }
+    overview.lang = language;
+    overview.dir = direction(language);
+    const [summary, list] = overview.children;
+    let updated = 0;
+    let total = 0;
+    for (const { resource, qualities } of context.products) {
+      total += qualities.length;
+      if (snapshot?.date !== date) continue;
+      for (const quality of qualities) {
+        const { days } = priceRule(preferences, resource, quality);
+        const status = quotes.get(`${resource}/${quality}/${days}`)?.status;
+        if (status === 'price' || status === 'no-trades') updated += 1;
+      }
+    }
+    const summaryLabel = text('overviewSummary', updated, total);
+    if (summary.textContent !== summaryLabel) summary.textContent = summaryLabel;
+    const key = `${context.id}/${language}`;
+    if (key === overviewKey) return context.overviewRows;
+
+    context.overviewRows = [];
+    const groups = context.products.map(({ resource, qualities }) => {
+      const group = document.createElement('div');
+      const name = document.createElement('b');
+      const names = productNames[resource]?.split(' / ');
+      name.textContent = names?.[language === 'zh-CN' ? 0 : 1] ?? `${text('product')} #${resource}`;
+      group.append(name);
+      for (const quality of qualities) {
+        const line = document.createElement('div');
+        line.textContent = `Q${quality}`;
+        line.dataset.resource = resource;
+        line.dataset.quality = quality;
+        group.append(line);
+        context.overviewRows.push({ resource, quality, line });
+      }
+      return group;
+    });
+    list.replaceChildren(...groups);
+    overviewKey = key;
+    return context.overviewRows;
+  }
+
   function render(context) {
+    if (!text) return;
     const { date } = tradingDay();
     const snapshot = context.snapshot;
     const { display } = preferences;
-    const language = uiLanguage(preferences.language, browserLanguage);
-    const text = translator(language);
+    const quotes = new Map(snapshot?.quotes.map(quote => [`${quote.resource}/${quote.quality}/${quote.days}`, quote]));
+    const rows = context.detail?.rows ?? overviewRows(context, date, snapshot, quotes);
 
-    for (const { quality, line } of context.rows) {
-      const { days, discount } = priceRule(preferences, context.resource, quality);
-      const entry = snapshot?.quotes.find(quote => quote.quality === quality && quote.days === days);
+    for (const { resource, quality, line } of rows) {
+      const { days, discount } = priceRule(preferences, resource, quality);
+      const entry = quotes.get(`${resource}/${quality}/${days}`);
       const quote = snapshot?.date === date ? entry : undefined;
       const previous = snapshot?.date < date && entry?.status === 'price'
         ? { ...entry, date: snapshot.date }
@@ -175,9 +270,10 @@
       const price = stalePrice ? previous : quote;
       const range = dateRange(stalePrice ? previous.date : date, days);
       const status = context.readError ? text('worker') : quoteStatus(quote, snapshot?.stage, text);
-      const caption = quote?.retryAt > Date.now() ? text('nextRead', formatTime[language].format(quote.retryAt)) : '';
+      const caption = quote?.retryAt > Date.now() ? text('nextRead', timeText(quote.retryAt)) : '';
       const showChart = Boolean(quote && display.chartLink &&
         !['unsupported', 'no-trades', 'sign-in'].includes(quote.status));
+      const chart = { realm: context.realm, resource };
       let pill = line.querySelector(`:scope > .${quoteClass}`);
       if (!pill) {
         pill = document.createElement('span');
@@ -185,6 +281,7 @@
         line.append(pill);
       }
       pill.lang = language;
+      pill.dir = direction(language);
       pill.dataset.layout = display.layout;
       pill.dataset.state = stalePrice ? 'stale' : quote?.status ?? 'checking';
       if (price?.status === 'price') {
@@ -197,19 +294,25 @@
           const day = document.createElement('small');
           day.textContent = range;
           if (stalePrice) {
-            const update = !preferences.autoFetch ? text('autoFetchOff')
-              : context.readError ? text('awaitingUpdate')
+            const update = !context.autoFetch || context.readError ? text('awaitingUpdate')
               : !quote || quote.status === 'queued' ? text('updating') : status;
             day.textContent += ` · ${update}`;
           }
           children.push(day);
         }
-        if (stalePrice && showChart) children.push(chartLink(context, quality, text));
+        if (stalePrice && showChart) children.push(chartLink(chart, quality, text));
         const source = text(price.source === 'native' ? 'nativeSource' : 'officialSource');
-        const coverage = days > 1 ? ` · ${text('tradingDays', price.daysWithTrades, days)}` : '';
-        const progress = stalePrice && preferences.autoFetch ? ` · ${status}${caption ? ` · ${caption}` : ''}` : '';
-        pill.title = `Q${quality} · ${range} · ${source}${coverage} · ${text('discountApplied', discount)}${progress}`;
-        show(pill, children, JSON.stringify(children.map(child => [child.textContent, child.getAttribute('href')])));
+        const coverage = days > 1 && Number.isInteger(price.daysWithTrades)
+          ? text('tradingDays', price.daysWithTrades, days) : '';
+        if (coverage && display.coverage) {
+          const count = document.createElement('small');
+          count.textContent = coverage;
+          children.push(count);
+        }
+        const progress = stalePrice && context.autoFetch ? ` · ${status}${caption ? ` · ${caption}` : ''}` : '';
+        pill.title = [ `Q${quality}`, range, source, coverage, text('discountApplied', discount) ]
+          .filter(Boolean).join(' · ') + progress;
+        show(pill, children, JSON.stringify([language, ...children.map(child => [child.textContent, child.getAttribute('href')])]));
       } else {
         const statusText = document.createElement('span');
         statusText.className = 'scwv-status';
@@ -222,17 +325,20 @@
           captionText.textContent = caption;
           children.push(captionText);
         }
-        if (showChart) children.push(chartLink(context, quality, text));
+        if (showChart) children.push(chartLink(chart, quality, text));
         pill.title = `Q${quality} · ${range}${detail}${help}`;
-        show(pill, children, `status/${status}/${caption}/${showChart ? `${context.realm}/${context.resource}/${quality}` : ''}`);
+        show(pill, children, `status/${language}/${status}/${caption}/${showChart ? `${context.realm}/${resource}/${quality}` : ''}`);
       }
     }
   }
 
-  function daysByQuality(context, settings = preferences) {
-    return Object.fromEntries(context.qualities.map(quality => [
-      quality, priceRule(settings, context.resource, quality).days,
-    ]));
+  function pricePeriods(context, settings = preferences) {
+    return context.products.map(product => ({
+      ...product,
+      daysByQuality: Object.fromEntries(product.qualities.map(quality => [
+        quality, priceRule(settings, product.resource, quality).days,
+      ])),
+    }));
   }
 
   async function readSnapshot(context, peek) {
@@ -241,11 +347,8 @@
         type: 'warehouse-vwap:quotes',
         pathname: location.pathname,
         realm: context.realm,
-        resource: context.resource,
-        name: context.name,
-        qualities: context.qualities,
-        daysByQuality: daysByQuality(context),
-        autoFetch: preferences.autoFetch,
+        products: pricePeriods(context),
+        autoFetch: context.autoFetch,
         peek,
       });
     } catch {
@@ -264,16 +367,16 @@
     let result = await readSnapshot(context, true);
 
     // Paint existing prices before the next market request can block a row.
-    if (current === context && result) {
+    if (current === context && readContext()?.id === context.id && result) {
       context.snapshot = result;
       context.readError = false;
       render(context);
-      if (result.refreshAt <= Date.now() && preferences.autoFetch) {
+      if (result.refreshAt <= Date.now() && context.autoFetch) {
         result = await readSnapshot(context, false);
       }
     }
     context.pending = false;
-    if (current !== context || readInventory()?.id !== context.id) return;
+    if (current !== context || readContext()?.id !== context.id) return;
 
     if (result) context.snapshot = result;
     context.readError = !result;
@@ -290,30 +393,65 @@
     }, wait);
   }
 
+  async function updateLocale() {
+    const next = uiLanguage(preferences.language, browserLanguage);
+    if (next === language) return;
+    if (!catalogReads.has(next)) {
+      catalogReads.set(next, chrome.runtime.sendMessage({
+        type: 'warehouse-vwap:locale', pathname: location.pathname, language: next,
+      }).catch(() => null));
+    }
+    const messages = await catalogReads.get(next);
+    if (!messages) {
+      catalogReads.delete(next);
+      return;
+    }
+    if (next !== uiLanguage(preferences.language, browserLanguage)) return;
+    language = next;
+    text = translator(messages);
+    if (current) render(current);
+  }
+
   function scan(refreshNow = false) {
-    const inventory = readInventory();
-    if (!inventory) {
+    const context = readContext();
+    if (!context) {
       if (current) {
         current = null;
         clearTimeout(refreshTimer);
+        overview?.remove();
+        overview = undefined;
         document.querySelectorAll(`.${quoteClass}`).forEach(node => node.remove());
       }
       return;
     }
-    if (current?.id !== inventory.id) {
+    if (current?.id !== context.id) {
       clearTimeout(refreshTimer);
-      current = inventory;
+      if (current?.realm === context.realm) context.snapshot = current.snapshot;
+      if (!context.isOverview) {
+        overview?.remove();
+        overview = undefined;
+      }
+      current = context;
       refreshNow = true;
     } else {
-      current.rows = inventory.rows;
-      current.name = inventory.name;
+      current.detail = context.detail;
+      current.products = context.products;
+      current.autoFetch = context.autoFetch;
     }
+    void updateLocale();
     render(current);
     if (refreshNow) void refresh(current);
   }
 
   window.addEventListener('message', event => {
-    if (event.source !== window || event.origin !== location.origin || event.data?.type !== 'scwv:native-daily-chart') return;
+    if (event.source !== window || event.origin !== location.origin) return;
+    if (event.data?.type === 'scwv:native-inventory') {
+      const { realm, products } = event.data;
+      inventory = [0, 1, 2].includes(realm) && Array.isArray(products) ? { realm, products } : undefined;
+      void ready.then(() => { if (document.body) scan(); });
+      return;
+    }
+    if (event.data?.type !== 'scwv:native-daily-chart') return;
     const { resource, realm, quality, data, startedAt } = event.data;
     const pathname = location.pathname;
     if (Number(chartRoute.exec(pathname)?.[1]) !== resource) return;
@@ -325,7 +463,7 @@
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (sender.id !== chrome.runtime.id) return;
     if (message?.type === 'warehouse-vwap:product') {
-      reply({ resource: readInventory()?.resource });
+      reply({ resource: readContext()?.detail?.resource });
       return;
     }
     if (message?.type === 'warehouse-vwap:refresh') {
@@ -334,15 +472,16 @@
     }
     if (message?.type !== 'warehouse-vwap:market') return;
     const { realm, resource, operation, dispatchBy } = message;
-    const inventory = readInventory();
-    if (!preferences.autoFetch || !inventory || realm !== inventory.realm || resource !== inventory.resource ||
+    const context = readContext();
+    const product = context?.products.find(product => product.resource === resource);
+    if (!context?.autoFetch || realm !== context.realm || !product ||
         !Number.isFinite(dispatchBy) || Date.now() >= dispatchBy ||
         (operation?.stage !== 'token' && (operation?.stage !== 'chart' ||
-          !inventory.qualities.includes(operation.quality) || typeof operation.token !== 'string'))) {
+          !product.qualities.includes(operation.quality) || typeof operation.token !== 'string'))) {
       reply({ skipped: true });
       return;
     }
-    readMarket(operation, inventory).then(reply, () => reply({ status: 0, issue: 'network' }));
+    readMarket(operation, { realm, resource }).then(reply, () => reply({ status: 0, issue: 'network' }));
     return true;
   });
 
@@ -357,17 +496,21 @@
     if (settingsChanged.length) {
       for (const key of settingsChanged) storedPreferences[key] = changes[key].newValue;
       preferences = readPreferences(storedPreferences);
-      if (current) render(current);
     }
     if (!current) return;
-    const cacheChanged = changes.quoteCache && current.qualities.some(quality => {
-      const key = `${current.realm}/${current.resource}/${quality}`;
+    const cacheChanged = changes.quoteCache && current.products.some(({ resource, qualities }) => qualities.some(quality => {
+      const key = `${current.realm}/${resource}/${quality}`;
       const { oldValue, newValue } = changes.quoteCache;
       return JSON.stringify(oldValue?.entries?.[key]) !== JSON.stringify(newValue?.entries?.[key]);
-    });
+    }));
     if (cacheChanged || previous.autoFetch !== preferences.autoFetch ||
-        (settingsChanged.length && JSON.stringify(daysByQuality(current, previous)) !== JSON.stringify(daysByQuality(current)))) {
-      void refresh(current);
+        previous.scope !== preferences.scope ||
+        (settingsChanged.length &&
+          JSON.stringify(pricePeriods(current, previous)) !== JSON.stringify(pricePeriods(current)))) {
+      scan(true);
+    } else if (settingsChanged.length) {
+      void updateLocale();
+      render(current);
     }
   });
 

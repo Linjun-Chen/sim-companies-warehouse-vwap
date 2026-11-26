@@ -43,9 +43,9 @@ function scenario(respond) {
   const restart = () => {
     const { getQuotes, rememberNative } = createQuoteService(dependencies);
     const service = context => getQuotes({
-      async request(operation, deadline) {
+      async request(operation, deadline, resource) {
         assert.ok(deadline > time);
-        const call = { realm: context.realm, resource: context.resource, ...operation, time };
+        const call = { realm: context.realm, resource, ...operation, time };
         calls.push(call);
         return respond(call, calls.length);
       },
@@ -176,6 +176,30 @@ test('queues separate grades, shares the limit across tabs, and preserves the li
     ['token', undefined], ['chart', 5], ['chart', 6], ['chart', 7],
   ]);
   assert.ok(sim.calls.slice(1).every((call, index) => call.time - sim.calls[index].time >= REQUEST_INTERVAL_MS));
+});
+
+test('a warehouse batch serves cached pairs first and reads only missing stock across products', async () => {
+  const sim = scenario(({ resource, quality }) => ({ status: 200, data: candles(daily(yesterday, resource + quality)) }));
+  sim.session.values.chartToken = 'market-token';
+  await sim.service.rememberNative({ realm: 0, resource: 1, quality: 0, data: candles(daily(yesterday, 0.27)) });
+  const warehouse = { realm: 0, products: [
+    { resource: 1, qualities: [0] },
+    { resource: 16, qualities: [5, 7], daysByQuality: { 7: 2 } },
+    { resource: 44, qualities: [12] },
+  ] };
+  const { quotes } = await sim.service(warehouse);
+  assert.deepEqual(quotes.map(({ resource, quality, days, vwap }) => [resource, quality, days, vwap]), [
+    [1, 0, 1, 0.27], [16, 5, 1, 21], [16, 7, 2, undefined], [44, 12, 1, undefined],
+  ]);
+  assert.deepEqual((await sim.service(warehouse)).quotes, quotes);
+  sim.advance();
+  await sim.service(warehouse);
+  sim.advance();
+  await sim.service(warehouse);
+  assert.deepEqual(sim.calls.map(({ resource, quality }) => [resource, quality]), [[16, 5], [16, 7], [44, 12]]);
+  sim.advance();
+  assert.ok((await sim.restart()(warehouse)).quotes.every(quote => quote.status === 'price'));
+  assert.equal(sim.calls.length, 3);
 });
 
 test('switching realms, resources and dates does not expose another quote', async () => {
